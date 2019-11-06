@@ -12,6 +12,7 @@ import android.content.Intent;
 import android.content.res.Resources;
 import android.graphics.BitmapFactory;
 import android.os.Build;
+import android.os.Bundle;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
@@ -315,6 +316,70 @@ public class LocalNotifications extends BroadcastReceiver {
         }
     }
 
+    public static void CancelNotification(Context ctx, Activity activity, int notificationId) {
+        if (ctx == null) {
+            Log.e("PicklePKG", "Failed to cancel notification! ctx was null!");
+            return;
+        }
+
+        Intent intent = new Intent(ctx, LocalNotifications.class);
+
+        if (intent == null) {
+            Log.e("PicklePKG", "Failed to cancel notification! intent was null!");
+            return;
+        }
+
+        PendingIntent alarmIntent = PendingIntent.getBroadcast(activity, notificationId, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        if (alarmIntent == null) {
+            Log.e("PicklePKG", "Failed to show notification! alarmIntent was null!");
+            return;
+        }
+
+        AlarmManager alarmManager = (AlarmManager) activity.getSystemService(Context.ALARM_SERVICE);
+
+        if (alarmManager == null) {
+            Log.e("PicklePKG", "Failed to show notification! alarmManager was null!");
+            return;
+        }
+
+        alarmManager.cancel(alarmIntent);
+    }
+
+    public static String GetLaunchIntentExtras(Activity activity)
+    {
+        if(activity == null){
+            Log.e("PicklePKG", "Failed to get launch intent extras! activity was null!");
+            return "";
+        }
+
+        Intent intent = activity.getIntent();
+
+        if(intent == null){
+            Log.e("PicklePKG", "Failed to get launch intent extras! intent was null!");
+            return "";
+        }
+
+        Bundle bundle = activity.getIntent().getExtras();
+
+        String intentExtrasString = "";
+
+        if(bundle != null){
+            for(String key : bundle.keySet()){
+                // Split each item with a pipe character as it's not a character which would be used
+                if(!intentExtrasString.isEmpty())
+                    intentExtrasString += "|";
+
+                String value = bundle.get(key) != null ? bundle.get(key).toString() : "";
+
+                // Split the key and value by a colon (C# splits by first colon, value is ok to contain colons)
+                intentExtrasString += key + ":" + value;
+            }
+        }
+
+        return intentExtrasString;
+    }
+
     // Called by the alarm manager once it's time to send the notification
     // (Make sure an activity and receiver is setup in the android manifest!)
     @Override
@@ -349,6 +414,7 @@ public class LocalNotifications extends BroadcastReceiver {
         }
 
         // Create the intent for the notification to launch the app when tapped
+        // (getLaunchIntentForPackage looks for the intent containing the LAUNCHER category or LEANBACK_LAUNCHER on android TV)
         Intent intent = ctx.getPackageManager().getLaunchIntentForPackage(ctx.getPackageName());
 
         if (intent == null) {
@@ -356,7 +422,7 @@ public class LocalNotifications extends BroadcastReceiver {
             return;
         }
 
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
 
         // Attach some extra information to the intent so we can see which notification was tapped to launch the app
         intent.putExtra("notificationId", notificationId);
@@ -367,7 +433,7 @@ public class LocalNotifications extends BroadcastReceiver {
         intent.putExtra("largeIconName", largeIconName);
         intent.putExtra("sendAfterSeconds", sendAfterSeconds);
 
-        PendingIntent pendingIntent = PendingIntent.getActivity(ctx, 0, intent, 0);
+        PendingIntent pendingIntent = PendingIntent.getActivity(ctx, notificationId, intent, PendingIntent.FLAG_UPDATE_CURRENT);
 
         NotificationCompat.Builder builder;
 

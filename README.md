@@ -21,20 +21,24 @@ GetSelfPackageName(Context)
 ```
 returns string of package name
 
+
 ```c#
 GetInstallTimestamp(Context)
 ```
 returns long of time since app was installed OR updated
+
 
 ```c#
 GetInitialInstallTimestamp(Context)
 ```
 returns long of time since app was initially installed (not affected by updates or clearing app data but uninstalling and reinstalling does reset this)
 
+
 ```c#
 DoesAppContainBadPermissions(Context)
 ```
 returns bool true if app contains permissions to REQUEST_DELETE_PACKAGES, REQUEST_INSTALL_PACKAGES, DELETE_PACKAGES or INSTALL_PACKAGES all dangerous permissions added by chinese spammy modded APK sites
+
 
 ```c#
 GetRunId(Context)
@@ -71,7 +75,8 @@ CreateNotificationChannel(...)
 CreateNotificationChannel(...)
 ```
 
-```c#CreateNotificationChannel(...)
+```c#
+CreateNotificationChannel(...)
 ```
 
 ```c#
@@ -87,10 +92,12 @@ GetNeededImportanceLevel(ChannelData)
 ```
 returns int
 
+
 ```c#
 GetNeededPriorityLevel(...)
 ```
 returns int
+
 
 ```c#
 DeleteNotificationChannelGroup(...)
@@ -104,6 +111,7 @@ DeleteNotificationChannel(...)
 GetChannelDataById(...)
 ```
 returns ChannelData
+
 
 ```c#
 SendNotification(...)
@@ -131,51 +139,61 @@ GetAvailableMemory()
 ```
 returns long
 
+
 ```c#
 GetUsedMemory()
 ```
 returns long
+
 
 ```c#
 GetTotalMemory()
 ```
 returns long
 
+
 ```c#
 GetMaxMemory()
 ```
 returns long
+
 
 ```c#
 GetFreeMemory()
 ```
 returns long
 
+
 ```c#
 GetMillisecondsSinceBoot()
 ```
 returns long
+
 
 ```c#
 GetDensity(Context)
 ```
 returns int
 
+
 ```c#
 GetXDPI(Context)
 ```
 returns float
+
 
 ```c#
 GetYDPI(Context)
 ```
 returns float
 
+
 ### com.pickle.picklecore.Toasts
 ```c#
 Show(Context, (String)Message, (int)Duration)
 ```
 See Toast.makeText here: https://developer.android.com/guide/topics/ui/notifiers/toasts.html
+
 
 ```c#
 Hide()
@@ -191,8 +209,10 @@ DoHapticFeedback(Activity, Context, (int)Type)
 ```
 See https://developer.android.com/reference/android/view/HapticFeedbackConstants for type int values
 
-Target SDK 26 or later to use these (script checks this first)
-You also need to add android.Manifest.permission.VIBRATE and the user needs to grant it or these will seemingly do nothing:
+
+
+#### Target SDK 26 or later to use these (script checks this first)
+#### You also need to add android.Manifest.permission.VIBRATE and the user needs to grant it or these will seemingly do nothing:
 ```c#
 DoVibrate(Context, (long)miliseconds)
 ```
@@ -201,6 +221,7 @@ DoVibrate(Context, (long)miliseconds)
 DoVibrate(Context, (long)miliseconds, (int)strength)
 ```
 strength is between 1 and 255, see https://developer.android.com/reference/android/os/VibrationEffect#createOneShot(long,%20int)
+
 
 ```c#
 StopVibrate()

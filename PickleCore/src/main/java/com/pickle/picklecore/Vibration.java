@@ -9,6 +9,7 @@ import android.os.Vibrator;
 import android.util.Log;
 import android.view.HapticFeedbackConstants;
 import android.view.View;
+import android.view.Window;
 
 import androidx.core.content.ContextCompat;
 
@@ -19,15 +20,28 @@ public class Vibration {
     public static boolean isVibratorInitialised;
 
     // Java doesn't support parameter defaults so this override is required
-    public static void DoHapticFeedback(Context ctx) {
-        DoHapticFeedback(ctx, 1);
+    public static void DoHapticFeedback(Activity activity, Context ctx) {
+        DoHapticFeedback(activity, ctx, 1);
     }
 
-    public static void DoHapticFeedback(Context ctx, int type) {
+    public static void DoHapticFeedback(Activity activity, Context ctx, int type) {
         View rootView = null;
 
         try {
-            rootView = ((Activity) ctx).getWindow().getDecorView().findViewById(android.R.id.content);
+            Window activityWindow = activity.getWindow();
+            if (activityWindow != null) {
+                View activityView = activityWindow.getDecorView();
+
+                if(activityView != null) {
+                    rootView = activityView.findViewById(android.R.id.content);
+                } else {
+                    Log.e("PicklePKG", "Vibration.DoHapticFeedback(..) null activityView!");
+                    return;
+                }
+            } else {
+                Log.e("PicklePKG", "Vibration.DoHapticFeedback(..) null activityWindow!");
+                return;
+            }
         } catch (Exception e) {
             Log.e("PicklePKG", "Vibration.DoHapticFeedback(..) failed to get rootView - " + e);
             return;

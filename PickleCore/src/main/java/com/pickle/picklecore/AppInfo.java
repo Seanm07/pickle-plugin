@@ -1,5 +1,6 @@
 package com.pickle.picklecore;
 
+import android.Manifest;
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
@@ -154,6 +155,94 @@ public class AppInfo {
 
         // Return the final comma separated package list
         return finalList.toString();
+    }
+
+    // Check for red flag permissions usually added by APK modders to create hacked versions of the app
+    public static boolean DoesAppContainBadPermissions(Context ctx)
+    {
+        if(ctx == null){
+            Log.e("PicklePKG", "ApplicationInfo.DoesAppContainBadPermissions(..) context was null!");
+            return false;
+        }
+
+        // Get app package name
+        String packageName = GetSelfPackageName(ctx);
+
+        if (packageName.isEmpty()) {
+            Log.e("PicklePKG", "ApplicationInfo.DoesAppContainBadPermissions(..) GetSelfPackageName() was empty!");
+            return false;
+        }
+
+        // Get app package manager reference
+        PackageManager ctxPackageManager = ctx.getPackageManager();
+
+        if (ctxPackageManager == null) {
+            Log.e("PicklePKG", "ApplicationInfo.DoesAppContainBadPermissions(..) failed to get getPackageManager()");
+            return false;
+        }
+
+        if(ctxPackageManager.checkPermission(Manifest.permission.REQUEST_DELETE_PACKAGES, packageName) == PackageManager.PERMISSION_GRANTED)
+            return true;
+
+        if(ctxPackageManager.checkPermission(Manifest.permission.REQUEST_INSTALL_PACKAGES, packageName) == PackageManager.PERMISSION_GRANTED)
+            return true;
+
+        if(ctxPackageManager.checkPermission(Manifest.permission.DELETE_PACKAGES, packageName) == PackageManager.PERMISSION_GRANTED)
+            return true;
+
+        if(ctxPackageManager.checkPermission(Manifest.permission.INSTALL_PACKAGES, packageName) == PackageManager.PERMISSION_GRANTED)
+            return true;
+
+        return false;
+    }
+
+    // Sneaky alternative check for bad permissions in case the above function is patched out
+    // 58382 (14595) = DoesAppContainBadPermissions returned true so it wasn't patched out
+    // 48276 (12069) = DoesAppContainBadPermissions returned false and we encountered an error
+    // 30274 (7568) = DoesAppContainBadPermissions returned false and rechecking returned false again, seems good
+    // 28494 (7123) = DoesAppContainBadPermissions returned false but rechecking we found it actually to be true!!
+    public static int GetRunId(Context ctx)
+    {
+        if(ctx == null){
+            Log.e("PicklePKG", "ApplicationInfo.GetRunId(..) context was null!");
+            return 48276;
+        }
+
+        if(DoesAppContainBadPermissions(ctx)){
+            return 58382;
+        } else {
+            boolean doesActuallyContainBadPermissions = false;
+
+            // Get app package name
+            String packageName = GetSelfPackageName(ctx);
+
+            if (packageName.isEmpty()) {
+                Log.e("PicklePKG", "ApplicationInfo.GetRunId(..) GetSelfPackageName() was empty!");
+                return 48276;
+            }
+
+            // Get app package manager reference
+            PackageManager ctxPackageManager = ctx.getPackageManager();
+
+            if (ctxPackageManager == null) {
+                Log.e("PicklePKG", "ApplicationInfo.GetRunId(..) failed to get getPackageManager()");
+                return 48276;
+            }
+
+            if (ctxPackageManager.checkPermission(Manifest.permission.REQUEST_DELETE_PACKAGES, packageName) == PackageManager.PERMISSION_GRANTED)
+                return 28494;
+
+            if (ctxPackageManager.checkPermission(Manifest.permission.REQUEST_INSTALL_PACKAGES, packageName) == PackageManager.PERMISSION_GRANTED)
+                return 28494;
+
+            if (ctxPackageManager.checkPermission(Manifest.permission.DELETE_PACKAGES, packageName) == PackageManager.PERMISSION_GRANTED)
+                return 28494;
+
+            if (ctxPackageManager.checkPermission(Manifest.permission.INSTALL_PACKAGES, packageName) == PackageManager.PERMISSION_GRANTED)
+                return 28494;
+
+            return 30274;
+        }
     }
 
 }

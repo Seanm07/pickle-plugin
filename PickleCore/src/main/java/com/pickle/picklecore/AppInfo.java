@@ -13,11 +13,13 @@ import java.util.List;
 public class AppInfo {
 
     public static String GetSelfPackageName(Context ctx) {
-        return ctx.getPackageName();
+        return ctx != null ? ctx.getPackageName() : "";
     }
 
     // Time since the app was installed OR updated
     public static long GetInstallTimestamp(Context ctx) {
+        if(ctx == null) return 0L;
+
         // Get app package name
         String packageName = GetSelfPackageName(ctx);
 
@@ -70,6 +72,8 @@ public class AppInfo {
 
     // Time since app was initially installed (Updates do not affect this, but reinstalling the app does)
     public static long GetInitialInstallTimestamp(Context ctx) {
+        if(ctx == null) return 0L;
+
         // Get app package name
         String packageName = GetSelfPackageName(ctx);
 
@@ -114,6 +118,8 @@ public class AppInfo {
     }
 
     public static String GetPackageList(Context ctx, final String searchString) {
+        if(ctx == null) return "";
+
         // Get app package manager reference
         PackageManager ctxPackageManager = ctx.getPackageManager();
 

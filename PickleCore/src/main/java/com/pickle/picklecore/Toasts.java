@@ -11,6 +11,8 @@ public class Toasts {
     private static Toast activeToast = null;
 
     public static void Show(final Context ctx, final String msg, final int duration) {
+        if(ctx == null) return;
+
         // Make sure any active toasts are force cancelled before showing a new one
         Hide();
 

@@ -25,6 +25,8 @@ public class Vibration {
     }
 
     public static void DoHapticFeedback(Activity activity, Context ctx, int type) {
+        if(ctx == null || activity == null || activity.isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && activity.isDestroyed())) return;
+
         View rootView = null;
 
         try {
@@ -68,6 +70,8 @@ public class Vibration {
     // Supress warnings about the permission for vibration not being in the manifest because we have the section wrapped in a check for the vibrate permission anyway
     @SuppressWarnings({"MissingPermission"})
     public static void DoVibrate(Context ctx, long miliseconds, int strength) {
+        if(ctx == null) return;
+
         if (Build.VERSION.SDK_INT >= 26) {
             if (!isVibratorInitialised) {
                 if (ContextCompat.checkSelfPermission(ctx, android.Manifest.permission.VIBRATE) == PackageManager.PERMISSION_GRANTED) {

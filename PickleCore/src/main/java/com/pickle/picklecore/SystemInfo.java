@@ -1,7 +1,11 @@
 package com.pickle.picklecore;
 
+import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.SystemClock;
+import android.provider.Settings;
 import android.util.DisplayMetrics;
 import android.util.Log;
 
@@ -76,6 +80,8 @@ public class SystemInfo {
     }
 
     public static int GetDensity(Context ctx) {
+        if(ctx == null) return -1;
+
         DisplayMetrics displayMetrics = GetDisplayMetrics(ctx);
 
         if (displayMetrics != null) {
@@ -87,6 +93,8 @@ public class SystemInfo {
     }
 
     public static float GetXDPI(Context ctx) {
+        if(ctx == null) return -1;
+
         DisplayMetrics displayMetrics = GetDisplayMetrics(ctx);
 
         if (displayMetrics != null) {
@@ -98,6 +106,8 @@ public class SystemInfo {
     }
 
     public static float GetYDPI(Context ctx) {
+        if(ctx == null) return -1;
+
         DisplayMetrics displayMetrics = GetDisplayMetrics(ctx);
 
         if (displayMetrics != null) {
@@ -106,5 +116,24 @@ public class SystemInfo {
             Log.e("PicklePKG", "SystemInfo.GetYDPI(..) displayMetrics was null!");
             return -1;
         }
+    }
+
+    public static void OpenSettingsApp(Activity activity, Context ctx) {
+        if(activity == null) return;
+
+        String packageName = AppInfo.GetSelfPackageName(ctx);
+
+        // Create an intent to launch the detailed settings page about an application
+        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+
+        // Set the URI to the package from the package name
+        Uri uri = Uri.fromParts("package", packageName, null);
+
+        // Add the URI to our intent so we know which app to launch detailed settings for
+        intent.setData(uri);
+        intent.addCategory("android.intent.category.DEFAULT");
+
+        // Start an activity with the intent we built
+        activity.startActivity(intent);
     }
 }

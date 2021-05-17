@@ -105,6 +105,8 @@ public class LocalNotifications extends BroadcastReceiver {
     }};
 
     public static void CreateNotificationGroup(Context ctx, String id, String name) {
+        if(ctx == null) return;
+
         if (channelGroups.containsKey(id)) {
             channelGroups.get(id).name = name;
         } else {
@@ -149,6 +151,8 @@ public class LocalNotifications extends BroadcastReceiver {
     }
 
     public static void CreateNotificationChannel(Context ctx, String id, String groupId, String name, String description, boolean showOnStatusBar, boolean playSound, boolean showHeadsUp) {
+        if(ctx == null) return;
+
         if (channelGroups.containsKey(groupId)) {
             ChannelGroupData channelGroup = channelGroups.get(groupId);
 
@@ -203,6 +207,8 @@ public class LocalNotifications extends BroadcastReceiver {
 
     // Note: This also deletes all channels within the group
     public static void DeleteNotificationChannelGroup(Context ctx, String id) {
+        if(ctx == null) return;
+
         if (channelGroups.containsKey(id))
             channelGroups.remove(id);
 
@@ -216,6 +222,8 @@ public class LocalNotifications extends BroadcastReceiver {
     }
 
     public static void DeleteNotificationChannel(Context ctx, String id) {
+        if(ctx == null) return;
+
         for (int groupInt = 0; groupInt < channelGroups.size(); groupInt++) {
             ChannelGroupData channelGroup = channelGroups.get(groupInt);
 
@@ -254,6 +262,8 @@ public class LocalNotifications extends BroadcastReceiver {
     }
 
     public static void SendNotification(Context ctx, Activity activity, int notificationId, String channelId, String msgTitle, String msgBody, int sendAfterSeconds, String smallIconName, String largeIconName, boolean removeWhenTapped) {
+        if(ctx == null || activity == null || activity.isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && activity.isDestroyed())) return;
+
         ChannelData channelData = GetChannelDataById(channelId);
 
         if (channelData == null) {
@@ -317,8 +327,8 @@ public class LocalNotifications extends BroadcastReceiver {
     }
 
     public static void CancelNotification(Context ctx, Activity activity, int notificationId) {
-        if (ctx == null) {
-            Log.e("PicklePKG", "Failed to cancel notification! ctx was null!");
+        if(ctx == null || activity == null || activity.isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && activity.isDestroyed())){
+            Log.e("PicklePKG", "Failed to cancel notification! Invalid context or activity!");
             return;
         }
 

@@ -1,8 +1,6 @@
 # Pickle Plugin - Readme incomplete - Will finish in future
 
 
-JarLoader.cs - https://pastebin.com/xZag2wjL
-
 An example notification script from Helicopter Rescue - https://pastebin.com/PH3X9K7S
 
 

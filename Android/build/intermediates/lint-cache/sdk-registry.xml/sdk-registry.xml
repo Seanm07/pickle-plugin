@@ -133,7 +133,7 @@
   </library>
 
   <library  groupId="com.google.firebase" artifactId="firebase-perf">
-    <versions to="10.2.6" status="deprecated" description="This version will soon be deprecated. Update to version 19.0.10 or higher to get real time performance data. For more information, visit https://firebase.google.com/docs/perf-mon/troubleshooting" url="https://firebase.google.com/docs/perf-mon/troubleshooting?platform=android#faq-real-time-data"/>
+    <versions to="16.2.1" status="deprecated" description="This version will soon be deprecated. Update to version 19.0.10 or higher to get real time performance data. For more information, visit https://firebase.google.com/docs/perf-mon/troubleshooting" url="https://firebase.google.com/docs/perf-mon/troubleshooting?platform=android#faq-real-time-data"/>
 </library>
 
   <library  groupId="com.google.dagger" artifactId="dagger-android" recommended-version="2.35.1" >

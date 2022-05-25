@@ -1,5 +1,6 @@
 package com.pickle.picklecore;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlarmManager;
 import android.app.NotificationChannel;
@@ -9,6 +10,7 @@ import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.graphics.BitmapFactory;
 import android.os.Build;
@@ -305,7 +307,7 @@ public class LocalNotifications extends BroadcastReceiver {
         intent.putExtra("removeWhenTapped", removeWhenTapped);
         intent.putExtra("priority", GetNeededPriorityLevel(channelData));
 
-        PendingIntent alarmIntent = PendingIntent.getBroadcast(activity, notificationId, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        PendingIntent alarmIntent = PendingIntent.getBroadcast(activity, notificationId, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         if (alarmIntent == null) {
             Log.e("PicklePKG", "Failed to show notification! alarmIntent was null!");
@@ -320,6 +322,31 @@ public class LocalNotifications extends BroadcastReceiver {
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            // Get app package name
+            String packageName = AppInfo.GetSelfPackageName(ctx);
+
+            if (packageName.isEmpty()) {
+                Log.e("PicklePKG", "LocalNotifications.SendNotification(..) GetSelfPackageName() was empty!");
+                return;
+            }
+
+            // Get app package manager reference
+            PackageManager ctxPackageManager = ctx.getPackageManager();
+
+            if (ctxPackageManager == null) {
+                Log.e("PicklePKG", "LocalNotifications.SendNotification(..) failed to get getPackageManager()");
+                return;
+            }
+
+            // Android 12+ requires android.permission.SCHEDULE_EXACT_ALARM to use setExact and policy says it must only be used for user scheduled events
+            if(ctxPackageManager.checkPermission(Manifest.permission.REQUEST_DELETE_PACKAGES, packageName) == PackageManager.PERMISSION_GRANTED){
+                // The app has SCHEDULE_EXACT_ALARM permission, use setExact
+                alarmManager.setExact(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + (sendAfterSeconds * 1000), alarmIntent);
+            } else {
+                // Fallback to inexact scheduling, the system can delay this until the device wakes up for other actions or can re-order notifications to save battery
+                alarmManager.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + (sendAfterSeconds * 1000), alarmIntent);
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             alarmManager.setExact(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + (sendAfterSeconds * 1000), alarmIntent);
         } else {
             alarmManager.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + (sendAfterSeconds * 1000), alarmIntent);
@@ -339,7 +366,7 @@ public class LocalNotifications extends BroadcastReceiver {
             return;
         }
 
-        PendingIntent alarmIntent = PendingIntent.getBroadcast(activity, notificationId, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        PendingIntent alarmIntent = PendingIntent.getBroadcast(activity, notificationId, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         if (alarmIntent == null) {
             Log.e("PicklePKG", "Failed to show notification! alarmIntent was null!");
@@ -443,7 +470,7 @@ public class LocalNotifications extends BroadcastReceiver {
         intent.putExtra("largeIconName", largeIconName);
         intent.putExtra("sendAfterSeconds", sendAfterSeconds);
 
-        PendingIntent pendingIntent = PendingIntent.getActivity(ctx, notificationId, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        PendingIntent pendingIntent = PendingIntent.getActivity(ctx, notificationId, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         NotificationCompat.Builder builder;
 

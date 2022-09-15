@@ -17,7 +17,7 @@
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
-  <component name="ExecutionTargetManager" SELECTED_TARGET="9885e64b3035474648" />
+  <component name="ExecutionTargetManager" SELECTED_TARGET="2e5e69af" />
   <component name="ExternalProjectsData">
     <projectState path="$PROJECT_DIR$">
       <ProjectState />
@@ -90,7 +90,7 @@
     <property name="project.structure.last.edited" value="Build Variants" />
     <property name="project.structure.proportion" value="0.17" />
     <property name="project.structure.side.proportion" value="0.2" />
-    <property name="settings.editor.selected.configurable" value="preferences.general" />
+    <property name="settings.editor.selected.configurable" value="project.propVCSSupport.Mappings" />
   </component>
   <component name="PsdUISettings">
     <option name="BUILD_VARIANTS_TAB" value="Build Types" />
@@ -160,7 +160,7 @@
         <option name="executionName" />
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
         <option name="externalSystemIdString" value="GRADLE" />
-        <option name="scriptParameters" />
+        <option name="scriptParameters" value="" />
         <option name="taskDescriptions">
           <list />
         </option>
@@ -169,7 +169,7 @@
             <option value="bundleReleaseAar" />
           </list>
         </option>
-        <option name="vmOptions" />
+        <option name="vmOptions" value="" />
       </ExternalSystemSettings>
       <GradleScriptDebugEnabled>true</GradleScriptDebugEnabled>
       <method v="2" />
@@ -223,25 +223,41 @@
     </todo-panel>
   </component>
   <component name="WindowStateProjectService">
-    <state width="1557" height="225" key="GridCell.Tab.0.bottom" timestamp="1652959259948">
+    <state x="2279" y="166" key="#Android_[bundleReleaseAar]" timestamp="1663255127999">
+      <screen x="1600" y="0" width="1920" height="1050" />
+    </state>
+    <state x="2279" y="166" key="#Android_[bundleReleaseAar]/0.0.1600.870/1600.0.1920.1050@1600.0.1920.1050" timestamp="1663255127999" />
+    <state x="648" y="324" key="#com.intellij.ide.util.projectWizard.JdkChooserPanel.MyDialog" timestamp="1663250191335">
       <screen x="0" y="0" width="1600" height="870" />
     </state>
-    <state width="1557" height="225" key="GridCell.Tab.0.bottom/0.0.1600.870/1600.0.1920.1050@0.0.1600.870" timestamp="1652959259948" />
-    <state width="1557" height="225" key="GridCell.Tab.0.center" timestamp="1652959259948">
+    <state x="648" y="324" key="#com.intellij.ide.util.projectWizard.JdkChooserPanel.MyDialog/0.0.1600.870/1600.0.1920.1050@0.0.1600.870" timestamp="1663250191335" />
+    <state width="778" height="284" key="GridCell.Tab.0.bottom" timestamp="1663257896482">
       <screen x="0" y="0" width="1600" height="870" />
     </state>
-    <state width="1557" height="225" key="GridCell.Tab.0.center/0.0.1600.870/1600.0.1920.1050@0.0.1600.870" timestamp="1652959259948" />
-    <state width="1557" height="225" key="GridCell.Tab.0.left" timestamp="1652959259947">
+    <state width="778" height="284" key="GridCell.Tab.0.bottom/0.0.1600.870/1600.0.1920.1050@0.0.1600.870" timestamp="1663257896482" />
+    <state width="1877" height="284" key="GridCell.Tab.0.bottom/0.0.1600.870/1600.0.1920.1050@1600.0.1920.1050" timestamp="1663255129135" />
+    <state width="778" height="284" key="GridCell.Tab.0.center" timestamp="1663257896481">
       <screen x="0" y="0" width="1600" height="870" />
     </state>
-    <state width="1557" height="225" key="GridCell.Tab.0.left/0.0.1600.870/1600.0.1920.1050@0.0.1600.870" timestamp="1652959259947" />
-    <state width="1557" height="225" key="GridCell.Tab.0.right" timestamp="1652959259948">
+    <state width="778" height="284" key="GridCell.Tab.0.center/0.0.1600.870/1600.0.1920.1050@0.0.1600.870" timestamp="1663257896481" />
+    <state width="1877" height="284" key="GridCell.Tab.0.center/0.0.1600.870/1600.0.1920.1050@1600.0.1920.1050" timestamp="1663255129135" />
+    <state width="778" height="284" key="GridCell.Tab.0.left" timestamp="1663257896481">
       <screen x="0" y="0" width="1600" height="870" />
     </state>
-    <state width="1557" height="225" key="GridCell.Tab.0.right/0.0.1600.870/1600.0.1920.1050@0.0.1600.870" timestamp="1652959259948" />
-    <state x="496" y="259" key="com.intellij.ide.util.TipDialog" timestamp="1652957863300">
+    <state width="778" height="284" key="GridCell.Tab.0.left/0.0.1600.870/1600.0.1920.1050@0.0.1600.870" timestamp="1663257896481" />
+    <state width="1877" height="284" key="GridCell.Tab.0.left/0.0.1600.870/1600.0.1920.1050@1600.0.1920.1050" timestamp="1663255129135" />
+    <state width="778" height="284" key="GridCell.Tab.0.right" timestamp="1663257896482">
       <screen x="0" y="0" width="1600" height="870" />
     </state>
-    <state x="496" y="259" key="com.intellij.ide.util.TipDialog/0.0.1600.870/1600.0.1920.1050@0.0.1600.870" timestamp="1652957863300" />
+    <state width="778" height="284" key="GridCell.Tab.0.right/0.0.1600.870/1600.0.1920.1050@0.0.1600.870" timestamp="1663257896482" />
+    <state width="1877" height="284" key="GridCell.Tab.0.right/0.0.1600.870/1600.0.1920.1050@1600.0.1920.1050" timestamp="1663255129135" />
+    <state x="301" y="77" key="SettingsEditor" timestamp="1663250223121">
+      <screen x="0" y="0" width="1600" height="870" />
+    </state>
+    <state x="301" y="77" key="SettingsEditor/0.0.1600.870/1600.0.1920.1050@0.0.1600.870" timestamp="1663250223121" />
+    <state x="496" y="259" key="com.intellij.ide.util.TipDialog" timestamp="1663242222119">
+      <screen x="0" y="0" width="1600" height="870" />
+    </state>
+    <state x="496" y="259" key="com.intellij.ide.util.TipDialog/0.0.1600.870/1600.0.1920.1050@0.0.1600.870" timestamp="1663242222119" />
   </component>
 </project>

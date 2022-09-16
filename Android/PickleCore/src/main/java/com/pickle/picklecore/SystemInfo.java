@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
+import android.graphics.Insets;
 import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Build;
@@ -14,7 +15,11 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Display;
 import android.view.DisplayCutout;
+import android.view.KeyCharacterMap;
+import android.view.KeyEvent;
 import android.view.Surface;
+import android.view.WindowInsets;
+import android.view.WindowMetrics;
 
 import java.lang.reflect.Method;
 
@@ -183,26 +188,69 @@ public class SystemInfo {
         return false;
     }
 
-    public static int[] GetSafeZone(Activity activity, Context ctx){
+    public static int[] GetSafeZone(Activity activity, Context ctx, boolean navbarSafeZone){
         if(ctx == null || activity == null) return new int[0];
 
         // Get the screen width/height so we can return a safe zone similar to Unity's safe zone
         DisplayMetrics displayMetrics = new DisplayMetrics();
         Display display;
+        int scrRotation, scrHeight, scrWidth;
+        int notchSize = 0;
+        int navSize = 0;
 
-        // API 30+ wants to use the new getDisplay method
+        // API 30+ wants to use the new getDisplay method and windowMetrics for screen size
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            WindowMetrics windowMetrics = activity.getWindowManager().getCurrentWindowMetrics();
             display = ctx.getDisplay();
+
+            Rect scrBounds = windowMetrics.getBounds();
+
+            scrWidth = scrBounds.width();
+            scrHeight = scrBounds.height();
+
+            if(navbarSafeZone){
+                // Deduct the size of the onscreen nav bar if one exists
+                WindowInsets windowInsets = windowMetrics.getWindowInsets();
+                Insets insets = windowInsets.getInsetsIgnoringVisibility(WindowInsets.Type.navigationBars());
+
+                navSize = insets.bottom + insets.top;
+            }
         } else {
             display = activity.getWindowManager().getDefaultDisplay();
+
+            if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+                display.getRealMetrics(displayMetrics);
+            } else {
+                // Below API 17 we can only use getMetrics which doesn't include size of the nav bar in the screen height
+                // so if the device has an on screen nav bar we need to manually add the size of it onto the screen height
+                display.getMetrics(displayMetrics);
+            }
+
+            scrHeight = displayMetrics.heightPixels;
+            scrWidth = displayMetrics.widthPixels;
+
+            if (android.os.Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR1 || navbarSafeZone){
+                // We need to get the height of the navigation buttons and add them to screen height
+                boolean hasPhysicalHomeKey = KeyCharacterMap.deviceHasKey(KeyEvent.KEYCODE_HOME);
+
+                if (!hasPhysicalHomeKey) {
+                    Resources resources = ctx.getResources();
+                    int navBarResId = resources.getIdentifier("navigation_bar_height", "dimen", "android");
+
+                    if (navBarResId > 0) {
+                        navSize = resources.getDimensionPixelSize(navBarResId);
+
+                        if (android.os.Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR1)
+                            scrHeight += navSize;
+
+                        if (!navbarSafeZone)
+                            navSize = 0;
+                    }
+                }
+            }
         }
 
-        display.getMetrics(displayMetrics);
-
-        int scrRotation = display.getRotation();
-        int scrHeight = displayMetrics.heightPixels;
-        int scrWidth = displayMetrics.widthPixels;
-        int notchSize = 0;
+        scrRotation = display.getRotation();
 
         // API 28+ has standardised notch support
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
@@ -213,9 +261,11 @@ public class SystemInfo {
                 return new int[] {
                     displayCutout.getSafeInsetLeft(),
                     displayCutout.getSafeInsetTop(),
-                    scrWidth - displayCutout.getSafeInsetRight() - displayCutout.getSafeInsetLeft(),
-                    scrHeight - displayCutout.getSafeInsetBottom() - displayCutout.getSafeInsetTop()
+                    scrWidth - displayCutout.getSafeInsetRight(),
+                    scrHeight - displayCutout.getSafeInsetBottom()
                 };
+
+                // TODO include navSize
             }
         }
 
@@ -303,18 +353,19 @@ public class SystemInfo {
             // Note: Screen height and width will auto adjust with orientation
             // As far as I know all device notches below API 28 are only on the top of the phone
             // (Some tablets have a pinhole/notch on the landscape top edge but it seems these are all API 28+)
+            // Note: The rotation angle is relative to how the UI is rotated not how the phone is rotated so it's anti-clockwise
             switch (scrRotation) {
-                // Portrait (notch top)
-                case Surface.ROTATION_0: return new int[] { 0, notchSize, scrWidth, scrHeight - notchSize };
+                // Portrait (notch top / nav bottom)
+                case Surface.ROTATION_0: return new int[] { 0, notchSize, scrWidth, scrHeight - navSize };
 
-                // Landscape right (notch right)
-                case Surface.ROTATION_90: return new int[] { 0, 0, scrWidth - notchSize, scrHeight };
+                // Landscape left (notch left / nav right)
+                case Surface.ROTATION_90: return new int[] { notchSize, 0, scrWidth - navSize, scrHeight };
 
-                // Upside down portrait (notch bottom)
-                case Surface.ROTATION_180: return new int[] { 0, 0, scrWidth, scrHeight - notchSize };
+                // Upside down portrait (notch bottom / nav bottom) (this one is weird, I would have expected the nav to be top)
+                case Surface.ROTATION_180: return new int[] { 0, 0, scrWidth, scrHeight - (notchSize >= navSize ? notchSize : navSize) };
 
-                // Landscape left (notch left)
-                case Surface.ROTATION_270: return new int[] { notchSize, 0, scrWidth - notchSize, scrHeight };
+                // Landscape right (notch right / nav left)
+                case Surface.ROTATION_270: return new int[] { navSize, 0, scrWidth - notchSize, scrHeight };
             }
         }
 

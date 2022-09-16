@@ -201,7 +201,7 @@ public class SystemInfo {
         // API 30+ wants to use the new getDisplay method and windowMetrics for screen size
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
             WindowMetrics windowMetrics = activity.getWindowManager().getCurrentWindowMetrics();
-            display = ctx.getDisplay();
+            display = activity.getDisplay();
 
             Rect scrBounds = windowMetrics.getBounds();
 
@@ -254,18 +254,16 @@ public class SystemInfo {
 
         // API 28+ has standardised notch support
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-            DisplayCutout displayCutout = activity.getWindow().getDecorView().getRootWindowInsets().getDisplayCutout();
+            DisplayCutout cutout = activity.getWindow().getDecorView().getRootWindowInsets().getDisplayCutout();
 
-            if (displayCutout != null){
+            if (cutout != null){
                 // This method kinda returns a safezone for us already so instead of setting notchSize just return the rect here
-                return new int[] {
-                    displayCutout.getSafeInsetLeft(),
-                    displayCutout.getSafeInsetTop(),
-                    scrWidth - displayCutout.getSafeInsetRight(),
-                    scrHeight - displayCutout.getSafeInsetBottom()
-                };
+                int leftInset = cutout.getSafeInsetLeft();
+                int topInset = cutout.getSafeInsetTop();
+                int rightInset = cutout.getSafeInsetRight();
+                int bottomInset = cutout.getSafeInsetBottom();
 
-                // TODO include navSize
+                return new int[] { leftInset, topInset, scrWidth - rightInset, scrHeight - (navSize >= bottomInset ? navSize : bottomInset) };
             }
         }
 

@@ -183,8 +183,8 @@ public class SystemInfo {
         return false;
     }
 
-    public Rect GetSafeZone(Activity activity, Context ctx){
-        if(ctx == null || activity == null) return new Rect(0,0,0,0);
+    public static int[] GetSafeZone(Activity activity, Context ctx){
+        if(ctx == null || activity == null) return new int[0];
 
         // Get the screen width/height so we can return a safe zone similar to Unity's safe zone
         DisplayMetrics displayMetrics = new DisplayMetrics();
@@ -210,12 +210,12 @@ public class SystemInfo {
 
             if (displayCutout != null){
                 // This method kinda returns a safezone for us already so instead of setting notchSize just return the rect here
-                return new Rect(
+                return new int[] {
                     displayCutout.getSafeInsetLeft(),
                     displayCutout.getSafeInsetTop(),
                     scrWidth - displayCutout.getSafeInsetRight() - displayCutout.getSafeInsetLeft(),
                     scrHeight - displayCutout.getSafeInsetBottom() - displayCutout.getSafeInsetTop()
-                );
+                };
             }
         }
 
@@ -305,21 +305,21 @@ public class SystemInfo {
             // (Some tablets have a pinhole/notch on the landscape top edge but it seems these are all API 28+)
             switch (scrRotation) {
                 // Portrait (notch top)
-                case Surface.ROTATION_0: return new Rect(0, notchSize, scrWidth, scrHeight - notchSize);
+                case Surface.ROTATION_0: return new int[] { 0, notchSize, scrWidth, scrHeight - notchSize };
 
                 // Landscape right (notch right)
-                case Surface.ROTATION_90: return new Rect(0, 0, scrWidth - notchSize, scrHeight);
+                case Surface.ROTATION_90: return new int[] { 0, 0, scrWidth - notchSize, scrHeight };
 
                 // Upside down portrait (notch bottom)
-                case Surface.ROTATION_180: return new Rect(0, 0, scrWidth, scrHeight - notchSize);
+                case Surface.ROTATION_180: return new int[] { 0, 0, scrWidth, scrHeight - notchSize };
 
                 // Landscape left (notch left)
-                case Surface.ROTATION_270: return new Rect(notchSize, 0, scrWidth - notchSize, scrHeight);
+                case Surface.ROTATION_270: return new int[] { notchSize, 0, scrWidth - notchSize, scrHeight };
             }
         }
 
-        // Return an empty rect if the notchSize was 0, so we can atleast fallback to the unity safezone
-        return new Rect(0,0,0,0);
+        // Return an empty int array if the notchSize was 0, so we can atleast fallback to the unity safezone
+        return new int[0];
     }
 
     public static void OpenSettingsApp(Activity activity, Context ctx) {

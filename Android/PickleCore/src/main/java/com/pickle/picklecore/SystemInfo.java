@@ -188,6 +188,58 @@ public class SystemInfo {
         return false;
     }
 
+    public static int GetWidth(Activity activity, Context ctx){
+        if(ctx == null || activity == null) return 0;
+
+        // API 30+ wants to use the new getDisplay method and windowMetrics for screen size
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            WindowMetrics windowMetrics = activity.getWindowManager().getCurrentWindowMetrics();
+
+            Rect scrBounds = windowMetrics.getBounds();
+
+            return scrBounds.width();
+        } else {
+            Display display = activity.getWindowManager().getDefaultDisplay();
+            DisplayMetrics displayMetrics = new DisplayMetrics();
+
+            if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+                display.getRealMetrics(displayMetrics);
+            } else {
+                // Below API 17 we can only use getMetrics which doesn't include size of the nav bar in the screen size
+                // so if the device has an on screen nav bar we need to manually add the size of it onto the screen height
+                display.getMetrics(displayMetrics);
+            }
+
+            return displayMetrics.widthPixels;
+        }
+    }
+
+    public static int GetHeight(Activity activity, Context ctx){
+        if(ctx == null || activity == null) return 0;
+
+        // API 30+ wants to use the new getDisplay method and windowMetrics for screen size
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            WindowMetrics windowMetrics = activity.getWindowManager().getCurrentWindowMetrics();
+
+            Rect scrBounds = windowMetrics.getBounds();
+
+            return scrBounds.height();
+        } else {
+            Display display = activity.getWindowManager().getDefaultDisplay();
+            DisplayMetrics displayMetrics = new DisplayMetrics();
+
+            if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+                display.getRealMetrics(displayMetrics);
+            } else {
+                // Below API 17 we can only use getMetrics which doesn't include size of the nav bar in the screen size
+                // so if the device has an on screen nav bar we need to manually add the size of it onto the screen height
+                display.getMetrics(displayMetrics);
+            }
+
+            return displayMetrics.heightPixels;
+        }
+    }
+
     public static int[] GetSafeZone(Activity activity, Context ctx, boolean navbarSafeZone){
         if(ctx == null || activity == null) return new int[0];
 
@@ -205,6 +257,7 @@ public class SystemInfo {
 
             Rect scrBounds = windowMetrics.getBounds();
 
+            scrRotation = display.getRotation();
             scrWidth = scrBounds.width();
             scrHeight = scrBounds.height();
 
@@ -221,18 +274,21 @@ public class SystemInfo {
             if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
                 display.getRealMetrics(displayMetrics);
             } else {
-                // Below API 17 we can only use getMetrics which doesn't include size of the nav bar in the screen height
+                // Below API 17 we can only use getMetrics which doesn't include size of the nav bar in the screen size
                 // so if the device has an on screen nav bar we need to manually add the size of it onto the screen height
                 display.getMetrics(displayMetrics);
             }
 
+            scrRotation = display.getRotation();
             scrHeight = displayMetrics.heightPixels;
             scrWidth = displayMetrics.widthPixels;
 
             if (android.os.Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR1 || navbarSafeZone){
-                // We need to get the height of the navigation buttons and add them to screen height
+                // We need to get the height of the navigation buttons and add them to screen size
+                // Below API 17 the screen size didn't include the navbar size so we need to manually add it
                 boolean hasPhysicalHomeKey = KeyCharacterMap.deviceHasKey(KeyEvent.KEYCODE_HOME);
 
+                // If we don't have a physical home button then we must have an on-screen nav bar
                 if (!hasPhysicalHomeKey) {
                     Resources resources = ctx.getResources();
                     int navBarResId = resources.getIdentifier("navigation_bar_height", "dimen", "android");
@@ -240,8 +296,15 @@ public class SystemInfo {
                     if (navBarResId > 0) {
                         navSize = resources.getDimensionPixelSize(navBarResId);
 
-                        if (android.os.Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR1)
-                            scrHeight += navSize;
+                        if (android.os.Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR1) {
+                            if(scrRotation == Surface.ROTATION_0 || scrRotation == Surface.ROTATION_180){
+                                // Device is portrait, nav is affecting height
+                                scrHeight += navSize;
+                            } else {
+                                // Device is landscape, nav is affecting width
+                                scrWidth += navSize;
+                            }
+                        }
 
                         if (!navbarSafeZone)
                             navSize = 0;
@@ -249,8 +312,6 @@ public class SystemInfo {
                 }
             }
         }
-
-        scrRotation = display.getRotation();
 
         // API 28+ has standardised notch support
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {

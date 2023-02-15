@@ -82,7 +82,8 @@ public class IABHandlerUDP : MonoBehaviour, IABHandler, IPurchaseListener
             Debug.Log("Purchase ready to be processed [Item: " + purchaseInfo.ProductId + "]");
 
         // Something's happening, refresh the timer for the hold on screen to show the skip button
-        ClickLockManager.Instance.ResetTimer();
+		if(ClickLockManager.Instance != null)
+			ClickLockManager.Instance.ResetTimer();
         
         // UDP needs to manually consume consumable items once purchase is complete
         IABItem localItem = IAB.GetItemBySKU(purchaseInfo.ProductId);
@@ -142,7 +143,8 @@ public class IABHandlerUDP : MonoBehaviour, IABHandler, IPurchaseListener
         Debug.Log("UDP OnPurchaseRepeated (" + sku + ")");
 
         // Something's happening, refresh the timer for the hold on screen to show the skip button
-        ClickLockManager.Instance.ResetTimer();
+		if(ClickLockManager.Instance != null)
+			ClickLockManager.Instance.ResetTimer();
         
         // UDP needs to manually consume consumable items once purchase is complete
         IABItem localItem = IAB.GetItemBySKU(sku);

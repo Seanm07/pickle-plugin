@@ -965,7 +965,8 @@ public class IABHandlerMain : MonoBehaviour, IABHandler, IStoreListener {
         }
 
         // Something's happening, refresh the timer for the hold on screen to show the skip button
-        ClickLockManager.Instance.ResetTimer();
+		if(ClickLockManager.Instance != null)
+			ClickLockManager.Instance.ResetTimer();
         
         if(IAB.StoreSupportsLocalReceipts()){
             // LOCAL purchase validation is only supported on Google Play and Apple App Stores, we skip this step on other stores
@@ -1120,21 +1121,24 @@ public class IABHandlerMain : MonoBehaviour, IABHandler, IStoreListener {
     
     private void SendPurchaseVerificationRequest(Product product, GooglePlayReceipt googleReceipt) {
         // Something's happening, refresh the timer for the hold on screen to show the skip button
-        ClickLockManager.Instance.ResetTimer();
+		if(ClickLockManager.Instance != null)
+			ClickLockManager.Instance.ResetTimer();
 
         IAB.StartCoroutine(DoPurchaseVerificationRequest(product, googleReceipt));
     }
     
     private void SendPurchaseVerificationRequest(Product product, AppleInAppPurchaseReceipt appleReceipt, bool verifyWithSandbox = false) {
         // Something's happening, refresh the timer for the hold on screen to show the skip button
-        ClickLockManager.Instance.ResetTimer();
+		if(ClickLockManager.Instance != null)
+			ClickLockManager.Instance.ResetTimer();
 
         IAB.StartCoroutine(DoPurchaseVerificationRequest(product, appleReceipt, verifyWithSandbox));
     }
 
     private void SendPurchaseVerificationRequest(Product product, AmazonAppsReceipt amazonAppsReceipt, bool verifyWithSandbox = false) {
         // Something's happening, refresh the timer for the hold on screen to show the skip button
-        ClickLockManager.Instance.ResetTimer();
+		if(ClickLockManager.Instance != null)
+			ClickLockManager.Instance.ResetTimer();
 
         IAB.StartCoroutine(DoPurchaseVerificationRequest(product, amazonAppsReceipt, verifyWithSandbox));
     }

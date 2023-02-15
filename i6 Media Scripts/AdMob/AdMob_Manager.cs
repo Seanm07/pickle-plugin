@@ -1745,7 +1745,7 @@ public class AdMob_Manager : MonoBehaviour {
         if (PlayerPrefs.GetInt("admob_test_mode", 0) == 0) {
             PlayerPrefs.SetInt("admob_test_mode", 1);
             
-            MessagePopupManager.Instance.ShowMessage("AdMob Test Mode Enabled", "You must now restart the app to get test ads and use the ad inspector!", Application.Quit, "Close app");
+			JarLoader.DisplayToastMessage("Test mode enabled, restart app to use ad inspector");
         } else {
             // Enable test mode and keep it enabled just incase we want to continue debugging with test logging
             enableTestMode = true;
@@ -1763,7 +1763,7 @@ public class AdMob_Manager : MonoBehaviour {
                 
                 Debug.LogError("Failed to open ad inspector! (" + errorMsg + ")");
                 
-                MessagePopupManager.Instance.ShowMessage("Failed to open Ad Inspector!", errorMsg);
+                JarLoader.DisplayToastMessage("Failed to open ad inspector!");
             } else {
                 Debug.Log("Ad inspector opened successfully!");
             }

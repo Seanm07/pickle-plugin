@@ -275,9 +275,12 @@ public class FirebaseAnalyticsManager : MonoBehaviour
         }
         
         string output = input.Replace(' ', '_').ToLowerInvariant();
-        output = output.Replace('.', '_');
         output = output.Replace('(', '_');
         output = output.Replace(')', '_');
+		
+		// If the type is not a value replace the invalid character . with _
+        if(type != FormatType.EventParameterValue && type != FormatType.UserPropertyValue)
+            output = output.Replace('.', '_');
 
         if (output.Length > charLimit)
             output = output.Substring(0, charLimit);

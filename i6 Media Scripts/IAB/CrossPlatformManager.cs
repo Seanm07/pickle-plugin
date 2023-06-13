@@ -126,7 +126,7 @@ public class CrossPlatformManager : MonoBehaviour, IInitListener {
     // Called when UDP builds have successfully initialised (called on Start on non-UDP builds)
     public void OnInitialized(UserInfo userInfo)
     {
-		if (GetActiveStore() == AppStore.UDP) {
+        if (GetActiveStore() == AppStore.UDP) {
             Debug.Log("Store Initialization Successful");
             CheckUDPStore();
         }
@@ -234,22 +234,7 @@ public class CrossPlatformManager : MonoBehaviour, IInitListener {
         if (instance == null || instance.udpStoreInfo.udpStore == null)
             return UDPStore.UNKNOWN;
         
-        string jsonUdpStoreValue = instance.udpStoreInfo.udpStore.ToUpper();
-        
-        if(Enum.TryParse(jsonUdpStoreValue, out UDPStore udpStore)) {
-            return udpStore;
-        } else {
-            // Fallback to searching for which store name it contains if any
-            // Some stores (Samsung Galaxy) randomly append info to the end of their store name so udp.json has e.g "SamsungGalaxyStore(Transition solution)"
-            // So if it can't be directly converted to an enum we'll check if it contains any of the stores
-            for (int i = 0; i < System.Enum.GetValues(typeof(UDPStore)).Length; i++) {
-                if (jsonUdpStoreValue.Contains(((UDPStore)i).ToString()))
-                    return (UDPStore)i;
-            }
-            
-            // None found, default back to unknown
-            return UDPStore.UNKNOWN;
-        }
+        return Enum.TryParse(instance.udpStoreInfo.udpStore.ToUpper(), out UDPStore udpStore) ? udpStore : UDPStore.UNKNOWN;
     }
     
     public static string AppStoreToStoreName(AppStore appStore) {

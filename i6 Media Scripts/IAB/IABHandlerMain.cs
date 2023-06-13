@@ -407,9 +407,6 @@ public class IABHandlerMain : MonoBehaviour, IABHandler, IStoreListener {
             case AppStore.GooglePlay:
             case AppStore.AppleAppStore:
             case AppStore.MacAppStore:
-                // This scripting define symbol is used because the GooglePlayTangle and AppleTangle scripts do not exist until they have been generated
-                // Setting UNITY_PURCHASING scripting define symbol just shows that the developer is following the guide and has setup the tangle files
-#if UNITY_PURCHASING
                 try {
                     CrossPlatformValidator validator = new CrossPlatformValidator(GooglePlayTangle.Data(), AppleTangle.Data(), Application.identifier);
                     receipts = validator.Validate(productReceipt);
@@ -421,10 +418,6 @@ public class IABHandlerMain : MonoBehaviour, IABHandler, IStoreListener {
                     FirebaseAnalyticsManager.LogEvent("iab_purchase_error", "error", "LocalValidationFailed");
                     Debug.LogError("Purchase failed! Local validation error: " + e.Message);
                 }
-#else
-                OnIABPurchaseFailed?.Invoke("Developer error! UNITY_PURCHASING scripting define symbol not set, could not run local purchase validation!");
-                Debug.LogError("UNITY_PURCHASING scripting define symbol must be set to use local validation on Google and Apple stores!");
-#endif
                 break;
         
             // Unity's documentation regarding amazon for Unity IAP is terrible, there's basically no documentation and I couldn't even find info on what version of amazon IAP it was using
@@ -502,7 +495,7 @@ public class IABHandlerMain : MonoBehaviour, IABHandler, IStoreListener {
         if (localItem != null) {
             // For consumable items this will consume the item from the store inventory, non-consumable items will just have their pending transactions ended
             if (CrossPlatformManager.GetActiveStore() == AppStore.GooglePlay) {
-#if UNITY_ANDROID && UNITY_PURCHASING && !UNITY_EDITOR
+#if UNITY_ANDROID && !UNITY_EDITOR
                 googleExtensions?.FinishTransaction(product.definition, product.transactionID);
 #endif
             }
@@ -766,7 +759,9 @@ public class IABHandlerMain : MonoBehaviour, IABHandler, IStoreListener {
                                 break;
                         }
                     } else {
-                        Debug.LogError("No existing receipt found for " + product.definition.storeSpecificId + " this purchase may still be pending..");
+                        if(FirebaseManager.instance.debugMode)
+                            Debug.LogError("No existing receipt found for " + product.definition.storeSpecificId + " this purchase may still be pending..");
+                        
                         itemInventoryState = ItemInventoryState.Pending;
                     }
                     
@@ -788,7 +783,8 @@ public class IABHandlerMain : MonoBehaviour, IABHandler, IStoreListener {
                             if (itemInventoryState == ItemInventoryState.Refunded) {
                                 // This purchase was refunded! We'll trigger the refunded callback then consume the purchase to clear it from the inventory
                                 OnItemRefunded(product);
-                            } else if(itemInventoryState == ItemInventoryState.Purchased) {
+                            } else if(itemInventoryState == ItemInventoryState.Purchased || itemInventoryState == ItemInventoryState.Pending) {
+                                // If the item is in the inventory in pending state (receipt missing) mark it as owned anyway
                                 // If a NonConsumable item has a receipt and is marked as NotOwned then call OnOwnedItemLoaded as it's a newly purchased item
                                 IAB.OnOwnedItemLoad(localItem);
                             }
@@ -965,8 +961,7 @@ public class IABHandlerMain : MonoBehaviour, IABHandler, IStoreListener {
         }
 
         // Something's happening, refresh the timer for the hold on screen to show the skip button
-		if(ClickLockManager.Instance != null)
-			ClickLockManager.Instance.ResetTimer();
+        ClickLockManager.Instance.ResetTimer();
         
         if(IAB.StoreSupportsLocalReceipts()){
             // LOCAL purchase validation is only supported on Google Play and Apple App Stores, we skip this step on other stores
@@ -1121,24 +1116,21 @@ public class IABHandlerMain : MonoBehaviour, IABHandler, IStoreListener {
     
     private void SendPurchaseVerificationRequest(Product product, GooglePlayReceipt googleReceipt) {
         // Something's happening, refresh the timer for the hold on screen to show the skip button
-		if(ClickLockManager.Instance != null)
-			ClickLockManager.Instance.ResetTimer();
+        ClickLockManager.Instance.ResetTimer();
 
         IAB.StartCoroutine(DoPurchaseVerificationRequest(product, googleReceipt));
     }
     
     private void SendPurchaseVerificationRequest(Product product, AppleInAppPurchaseReceipt appleReceipt, bool verifyWithSandbox = false) {
         // Something's happening, refresh the timer for the hold on screen to show the skip button
-		if(ClickLockManager.Instance != null)
-			ClickLockManager.Instance.ResetTimer();
+        ClickLockManager.Instance.ResetTimer();
 
         IAB.StartCoroutine(DoPurchaseVerificationRequest(product, appleReceipt, verifyWithSandbox));
     }
 
     private void SendPurchaseVerificationRequest(Product product, AmazonAppsReceipt amazonAppsReceipt, bool verifyWithSandbox = false) {
         // Something's happening, refresh the timer for the hold on screen to show the skip button
-		if(ClickLockManager.Instance != null)
-			ClickLockManager.Instance.ResetTimer();
+        ClickLockManager.Instance.ResetTimer();
 
         IAB.StartCoroutine(DoPurchaseVerificationRequest(product, amazonAppsReceipt, verifyWithSandbox));
     }
@@ -1193,55 +1185,55 @@ public class IABHandlerMain : MonoBehaviour, IABHandler, IStoreListener {
                 yield break;
             }
 
-            try {
-                if (FirebaseManager.instance.debugMode)
-                    Debug.Log(verificationRequestDownloadHandler.text);
+            //try {
+            if (FirebaseManager.instance.debugMode)
+                Debug.Log(verificationRequestDownloadHandler.text);
 
-                JSONNode verificationResponse = SimpleJSON.JSON.Parse(verificationRequestDownloadHandler.text);
+            JSONNode verificationResponse = SimpleJSON.JSON.Parse(verificationRequestDownloadHandler.text);
 
-                if (verificationResponse != null) {
-                    // Note: Not comparing .Value to the strings results in a non match as the JSONNode children are JSONNodes, not strings
-                    // Note2: developerPayload is being phased out, it's in the v3 API but Unity IAP doesn't support it and forum unity devs suggest not using it as it'll eventually be api removed
-                    // if the server response had a valid matching orderId though we can assume it's legit and there isn't anything extra we could get from checking a developerPayload too
-                    if (verificationResponse["orderId"].Value == googleReceipt.transactionID) {
+            if (verificationResponse != null) {
+                // Note: Not comparing .Value to the strings results in a non match as the JSONNode children are JSONNodes, not strings
+                // Note2: developerPayload is being phased out, it's in the v3 API but Unity IAP doesn't support it and forum unity devs suggest not using it as it'll eventually be api removed
+                // if the server response had a valid matching orderId though we can assume it's legit and there isn't anything extra we could get from checking a developerPayload too
+                if (verificationResponse.HasKey("orderId") && verificationResponse["orderId"]?.Value == googleReceipt.transactionID) {
+                    OnPurchaseVerificationCompleted(product);
+                } else {
+                    // Check if this purchase was made via alternative purchase methods e.g promo code, rewarded or test purchase
+                    if (verificationResponse.HasKey("purchaseType") && int.TryParse(verificationResponse["purchaseType"]?.Value, out int purchaseType)) {
                         OnPurchaseVerificationCompleted(product);
                     } else {
-                        // Check if this purchase was made via alternative purchase methods e.g promo code, rewarded or test purchase
-                        if (int.TryParse(verificationResponse["purchaseType"]?.Value, out int purchaseType)) {
-                            OnPurchaseVerificationCompleted(product);
+                        // Invalid purchase..
+                        IAB.OnPurchaseVerificationFailed(googleReceipt.productID, "Purchase validation failed!\nRestart the app or try the purchase again to retry (you won't be re-charged)");
+
+                        Debug.LogError("Purchase failed - Invalid purchase type or order id!");
+
+                        if (FirebaseManager.instance.debugMode) {
+                            Debug.LogError("Verification transaction id: " + verificationResponse["orderId"]);
+                            Debug.LogError("Client orderId: " + googleReceipt.orderID);
+
+                            Debug.LogError("Store type - android");
+                            Debug.LogError("Bundle - " + googleReceipt.packageName);
+                            Debug.LogError("SKU - " + googleReceipt.productID);
+                            Debug.LogError("Token - " + googleReceipt.purchaseToken);
+                            Debug.LogError("Item Type - " + (product.definition.type == ProductType.Subscription ? "subs" : "inapp"));
                         } else {
-                            // Invalid purchase..
-                            IAB.OnPurchaseVerificationFailed(googleReceipt.productID, "Purchase validation failed!\nRestart the app or try the purchase again to retry (you won't be re-charged)");
-
-                            Debug.LogError("Purchase failed - Invalid payload or order id!");
-
-                            if (FirebaseManager.instance.debugMode) {
-                                Debug.LogError("Verification transaction id: " + verificationResponse["orderId"]);
-                                Debug.LogError("Client orderId: " + googleReceipt.orderID);
-
-                                Debug.LogError("Store type - android");
-                                Debug.LogError("Bundle - " + googleReceipt.packageName);
-                                Debug.LogError("SKU - " + googleReceipt.productID);
-                                Debug.LogError("Token - " + googleReceipt.purchaseToken);
-                                Debug.LogError("Item Type - " + (product.definition.type == ProductType.Subscription ? "subs" : "inapp"));
-                            } else {
-                                Debug.Log("Enable debug mode on the FirebaseManager for a more detailed output!");
-                            }
+                            Debug.Log("Enable debug mode on the FirebaseManager for a more detailed output!");
                         }
                     }
-                } else {
-                    IAB.OnPurchaseVerificationFailed(googleReceipt.productID, "Blank response from Google's purchase validation service!");
-                    Debug.LogError("Purchase failed - Null SimpleJSON parse");
                 }
-            } catch (ArgumentException e) {
+            } else {
+                IAB.OnPurchaseVerificationFailed(googleReceipt.productID, "Blank response from Google's purchase validation service!");
+                Debug.LogError("Purchase failed - Null SimpleJSON parse");
+            }
+            /*} catch (ArgumentException e) {
                 IAB.OnPurchaseVerificationFailed(googleReceipt.productID, "Exception while parsing response from Google's purchase validation service!");
 
                 if (e is IndexOutOfRangeException || e is ArgumentOutOfRangeException) {
-                    Debug.LogError("Purchase failed - developerPayload and/or orderId missing from the verification response!");
+                    Debug.LogError("Purchase failed - orderId missing from the verification response!");
                 } else {
                     Debug.LogError("Purchase failed - " + e.Message);
                 }
-            }
+            }*/
         } else {
             IAB.OnPurchaseVerificationFailed(googleReceipt.productID, "Failed to contact the purchase validation service!\nTry the purchase again or restart the app to retry (you won't be re-charged)");
         }

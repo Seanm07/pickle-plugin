@@ -121,11 +121,62 @@ public class IABManager : MonoBehaviour {
 
     private IABHandler iabHandler;
 
+#if UNITY_EDITOR
+    [ContextMenu("Import Item List From CSV")]
+    private void ImportItemListFromCSV() {
+        string csvPath = UnityEditor.EditorUtility.OpenFilePanel("Import IAP CSV", "", "csv");
+
+        if (csvPath.Length > 0) {
+            itemList.Clear();
+
+            string fileData = System.IO.File.ReadAllText(csvPath);
+            string[] fileLines = fileData.Split("\r"[0]);
+
+            // Skip the first line as it's headers
+            for (int lineId = 1; lineId < fileLines.Length; lineId++) {
+                string[] lineData = fileLines[lineId].Trim().Split(","[0]);
+                
+                IABItem newIABItem = new IABItem();
+                
+                newIABItem.storeSKUs = new List<IABItemStoreInfo>();
+
+                IABItemStoreInfo googlePlayStoreInfo = new IABItemStoreInfo();
+                googlePlayStoreInfo.store = AppStore.GooglePlay;
+                googlePlayStoreInfo.sku = lineData[0];
+                newIABItem.storeSKUs.Add(googlePlayStoreInfo);
+                
+                IABItemStoreInfo appStoreStoreInfo = new IABItemStoreInfo();
+                appStoreStoreInfo.store = AppStore.AppleAppStore;
+                appStoreStoreInfo.sku = lineData[1];
+                newIABItem.storeSKUs.Add(appStoreStoreInfo);
+                
+                IABItemStoreInfo amazonStoreInfo = new IABItemStoreInfo();
+                amazonStoreInfo.store = AppStore.AmazonAppStore;
+                amazonStoreInfo.sku = lineData[2];
+                newIABItem.storeSKUs.Add(amazonStoreInfo);
+                
+                IABItemStoreInfo udpStoreInfo = new IABItemStoreInfo();
+                udpStoreInfo.store = AppStore.UDP;
+                udpStoreInfo.sku = lineData[3];
+                newIABItem.storeSKUs.Add(udpStoreInfo);
+
+                newIABItem.productId = googlePlayStoreInfo.sku;
+                switch (lineData[4]) {
+                    case "Consumable": newIABItem.type = ProductType.Consumable; break;
+                    case "Nonconsumable": newIABItem.type = ProductType.NonConsumable; break;
+                    case "Subscription": newIABItem.type = ProductType.Subscription; break;
+                }
+                
+                itemList.Add(newIABItem);
+            }
+        }
+
+    }
+#endif
+    
     private void Awake() {
         instance = instance ?? this;
-    }
 
-    private void Start() {
         // Setup the specific IAB handler as we need to do things differently for UDP builds
         if (CrossPlatformManager.GetActiveStore() == AppStore.UDP) {
             iabHandler = GetComponent<IABHandlerUDP>() ?? gameObject.AddComponent<IABHandlerUDP>();
@@ -134,15 +185,19 @@ public class IABManager : MonoBehaviour {
             iabHandler = GetComponent<IABHandlerMain>() ?? gameObject.AddComponent<IABHandlerMain>();
             iabHandler.Init(this);
         }
-
-        if (CrossPlatformManager.instance.hasInitialized) {
-            OnStoreInitializeSuccessful();
-        } else {
-            CrossPlatformManager.OnStoreInitializeSuccessful += OnStoreInitializeSuccessful;
-        }
+        
+        CrossPlatformManager.OnStoreInitializeSuccessful += OnStoreInitializeSuccessful;
     }
 
+    // Add a few frames of delay so we're not initializing alongside other scripts
     private void OnStoreInitializeSuccessful() {
+        StartCoroutine(DoStoreInitialization());
+    }
+
+    private IEnumerator DoStoreInitialization() {
+        for(int i=0;i < 10;i++)
+            yield return null;
+        
         iabHandler.InitializePurchasing();
     }
 

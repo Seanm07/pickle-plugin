@@ -2,27 +2,23 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
-using Firebase.Analytics;
 using GoogleMobileAds.Api;
-using GoogleMobileAds.Api.Mediation.Chartboost;
-using GoogleMobileAds.Api.Mediation.AdColony;
-using GoogleMobileAds.Api.Mediation.UnityAds;
-using GoogleMobileAds.Api.Mediation.InMobi;
-#if UNITY_ANDROID
-using GoogleMobileAds.Android;
-#endif
-
+using GoogleMobileAds.Mediation.InMobi.Api;
+using GoogleMobileAds.Mediation.AdColony.Api;
+using GoogleMobileAds.Mediation.Chartboost.Api;
+using GoogleMobileAds.Mediation.UnityAds.Api;
+using UnityEngine.Purchasing;
 
 public class AdMob_Manager : MonoBehaviour {
     [Serializable]
     public class PlatformData {
         public PlatformAdData AndroidAdData;
+        public PlatformAdData ThirdPartyAndroidAdData;
         public PlatformAdData IosAdData;
 
         public PlatformAdData GetActive() {
             switch (Application.platform) {
-                case RuntimePlatform.Android: return AndroidAdData;
-
+                case RuntimePlatform.Android: return CrossPlatformManager.GetActiveStore() == AppStore.GooglePlay ? AndroidAdData : ThirdPartyAndroidAdData;
                 case RuntimePlatform.IPhonePlayer: return IosAdData;
 
                 case RuntimePlatform.WindowsEditor:
@@ -47,26 +43,21 @@ public class AdMob_Manager : MonoBehaviour {
         [Header("Set multiple ids to use floors where element 0 is highest paying")]
         public string[] floorId = new string[0];
     }
-    
+
     [Serializable]
     public class PlatformAdData {
         [Header("AdMob Ad Ids")] public string appId = "ca-app-pub-xxxxxxxxxxxxxxxx~xxxxxxxxxx";
-        
+
         // Each ad id is an array, allowing us to load multiple ads into memory at once (for example we might want 2 screens right after each other with reward ads or might want to keep smart banners and square dynamic banners ready at all times for switching between screens)
         // Using different ids is optional, if you just want to use multiple ads with the same id just add the same id again in the array
-        
+
         [Header("Multiple ids per slot supported for prioritising higher value ads first")]
         public AdFloorIDs[] interstitialFloorData = new AdFloorIDs[0];
+
         public AdFloorIDs[] bannerFloorData = new AdFloorIDs[0];
         public AdFloorIDs[] rewardFloorData = new AdFloorIDs[0];
         public AdFloorIDs[] rewardedInterstitialFloorData = new AdFloorIDs[0];
 
-        [Header("NO LONGER USED! Copy these IDs into the floor data above!")]
-        public string[] interstitialId = new string[0];
-        public string[] bannerId = new string[0];
-        public string[] rewardId = new string[0];
-        public string[] rewardedInterstitialId = new string[0];
-        
         [Header("Additional Ad Settings")]
         // TagForChildDirectedTreatment will stop admob tracking this user and will not deliver interest based ads
         // This will reduce revenue for the game so don't set this unless specifically asked to!
@@ -81,20 +72,19 @@ public class AdMob_Manager : MonoBehaviour {
     public bool debugLogging = false; // Should debug messages be logged?
     public bool enableTestMode = false; // Test mode will display test ads which we are allowed to click
 
-    public PlatformData platformAdData = new PlatformData();
+    [Header("Platform Ad Configuration")] public PlatformData platformAdData = new PlatformData();
 
     public bool isAdMobInitialized { get; set; }
 
-
+    
     public enum BannerSizeType { NONE, SMARTBANNER, BANNER, LEADERBOARD, MEDIUMRECTANGLE }
 
-    [Header("Preloaded Banner Settings")] 
-    public BannerSizeType mainPreloadBannerType = BannerSizeType.SMARTBANNER;
+    [Header("Preloaded Banner Settings")] public BannerSizeType mainPreloadBannerType = BannerSizeType.SMARTBANNER;
     public bool mainDisplayPreloadBannerImmediately = false;
 
     [Header("Call ShowBannerAd(..) with x and y at runtime to manually position this preloaded ad!")]
     public AdPosition mainPreloadBannerPosition;
-    
+
     public BannerSizeType[] preloadBannerType { get; private set; } // Note: Banner ads need to be destroyed when changing type so make sure the first banner ad will actually be the first ad type used or we'll just end up loading then destroying it for no reason
     public bool[] displayPreloadBannerImmediately { get; private set; }
     public AdPosition[] preloadBannerPosition { get; private set; }
@@ -105,7 +95,7 @@ public class AdMob_Manager : MonoBehaviour {
     public float interstitialWaitTime = 1f; // Time to wait before displaying interstitial after InterstitialWaitScreen has appeared
 
     // WARNING: As of early 2019 setting this value too low can make the ads start returning no fill without even trying to check for ads (temporary blacklist)
-    public float timeBetweenAdLoadRetry = 10f;
+    [Header("Misc Settings")] public float timeBetweenAdLoadRetry = 10f;
 
     // How many attempts will be made to reload ads which fail to load (a manual ad load request will always happen regardless of retries made)
     // But note that the retry count only resets when an ad request returns a valid response
@@ -113,7 +103,7 @@ public class AdMob_Manager : MonoBehaviour {
 
     // Uses full width and 50px or 90px height (depending on size) which excludes the normal 32px height option (used for mediation which doesn't support 32px heights)
     public bool useCustomSmartBannerSize = false;
-
+    
     // Information about the interstitial state
     public bool[] intIsReady { get; private set; }
     public bool[] intIsLoading { get; private set; }
@@ -127,7 +117,7 @@ public class AdMob_Manager : MonoBehaviour {
     public bool[] bannerIsVisible { get; private set; }
     public bool[] bannerWantedVisible { get; private set; }
     private int[] bannerFloorGroupAttemptedRetries;
-    
+
     public bool[] rewardIsReady { get; private set; }
     public bool[] rewardIsLoading { get; private set; }
     public bool[] rewardIsVisible { get; private set; }
@@ -140,21 +130,16 @@ public class AdMob_Manager : MonoBehaviour {
     public bool[] rewardedIntWantedVisible { get; private set; }
     public int[] rewardedIntFloorGroupAttemptedRetries { get; private set; }
 
-    public bool activeBannerIsReady { get; private set; }
-    public bool activeBannerIsLoading { get; private set; }
-    public bool activeBannerIsVisible { get; private set; }
-    public bool activeBannerWantedVisible { get; private set; }
-    
     public int totalIntSlots { get; private set; }
     public int totalBannerSlots { get; private set; }
     public int totalRewardSlots { get; private set; }
     public int totalRewardedIntSlots { get; private set; }
-    
+
     public int[] totalIntFloors { get; private set; }
     public int[] totalBannerFloors { get; private set; }
     public int[] totalRewardFloors { get; private set; }
     public int[] totalRewardedIntFloors { get; private set; }
-    
+
     public int intWantedFloorId { get; private set; }
     public int bannerWantedFloorId { get; private set; }
     public int rewardWantedFloorId { get; private set; }
@@ -177,7 +162,7 @@ public class AdMob_Manager : MonoBehaviour {
     private const string PREF_PERSONALISATION = "personalisation_granted";
     private const string PREF_AD_REMOVAL = "adremoval_purchased";
     private const string PREF_MATURE = "mature_user";
-    
+
     // Ads loaded into memory
     private InterstitialAd[] adMobInterstitial;
     private BannerView[] adMobBanner;
@@ -213,24 +198,19 @@ public class AdMob_Manager : MonoBehaviour {
     private bool hasLoadedAnyBanner = false;
     private bool hasLoadedAnyReward = false;
     private bool hasLoadedAnyRewardedInt = false;
-    
+
     // Universal interstitial ad callbacks
     public static event Action OnInterstitialAdReady;
     public static event Action OnInterstitialAdShown;
     public static event Action OnInterstitialAdClosed;
-    public static event Action<AdFailedToLoadEventArgs> OnInterstitialAdFailedToLoad;
-    
-    private EventHandler<EventArgs>[] interstitialOnAdLoadedCallback;
-    private EventHandler<EventArgs>[] interstitialOnAdOpeningCallback;
-    private EventHandler<EventArgs>[] interstitialOnAdClosedCallback;
-    private EventHandler<AdFailedToLoadEventArgs>[] interstitialOnAdFailedToLoadCallback;
+    public static event Action<LoadAdError> OnInterstitialAdFailedToLoad;
 
     // Universal banner ad callbacks
     public static event Action OnBannerAdReady;
     public static event Action OnBannerAdShown;
     public static event Action OnBannerAdClosed;
-    public static event Action<AdFailedToLoadEventArgs> OnBannerAdFailedToLoad;
-    
+    public static event Action<LoadAdError> OnBannerAdFailedToLoad;
+
     // EventHandlers which allow us to send custom banner callbacks which include the bannerRefId
     private EventHandler<EventArgs>[] bannerOnAdLoadedCallback;
     private EventHandler<EventArgs>[] bannerOnAdOpeningCallback;
@@ -242,15 +222,8 @@ public class AdMob_Manager : MonoBehaviour {
     public static event Action OnRewardAdShown;
     public static event Action<Reward> OnRewardAdRewarded;
     public static event Action OnRewardAdClosed;
-    public static event Action<AdErrorEventArgs> OnRewardAdFailedToShow;
-    public static event Action<AdFailedToLoadEventArgs> OnRewardAdFailedToLoad;
-
-    private EventHandler<EventArgs>[] rewardOnAdLoadedCallback;
-    private EventHandler<EventArgs>[] rewardOnAdOpeningCallback;
-    private EventHandler<EventArgs>[] rewardOnAdClosedCallback;
-    private EventHandler<Reward>[] rewardOnUserEarnedRewardCallback;
-    private EventHandler<AdFailedToLoadEventArgs>[] rewardOnAdFailedToLoadCallback;
-    private EventHandler<AdErrorEventArgs>[] rewardOnAdFailedToShowCallback;
+    public static event Action OnRewardAdFailedToShow;
+    public static event Action<LoadAdError> OnRewardAdFailedToLoad;
 
     // Universal rewarded interstitial ad callbacks
     public static event Action OnRewardedInterstitialAdReady;
@@ -258,11 +231,7 @@ public class AdMob_Manager : MonoBehaviour {
     public static event Action<Reward> OnRewardedInterstitialAdRewarded;
     public static event Action OnRewardedInterstitialAdClosed;
     public static event Action<AdErrorEventArgs> OnRewardedInterstitialAdFailedToShow;
-    public static event Action<AdFailedToLoadEventArgs> OnRewardedInterstitialAdFailedToLoad;
-
-    private EventHandler<EventArgs>[] rewardedIntOnPresentFullscreenContent;
-    private EventHandler<EventArgs>[] rewardedIntOnDismissFullscreenContent;
-    private EventHandler<AdErrorEventArgs>[] rewardedIntOnAdFailedToPresentFullscreenContent;
+    public static event Action<LoadAdError> OnRewardedInterstitialAdFailedToLoad;
 
     // Private actual admob plugin initialisation complete (we don't announce initialization to be done until waiting a few extra frames for the mediation to be ready too)
     private static event Action<InitializationStatus> OnInitializationComplete;
@@ -274,9 +243,13 @@ public class AdMob_Manager : MonoBehaviour {
     public float scrDPI { get; private set; }
 
     private PlatformAdData GetPlatformAdData() {
-        cachedPlatformDataRef = cachedPlatformDataRef ?? platformAdData.GetActive();
+        if (CrossPlatformManager.instance.hasInitialized) {
+            cachedPlatformDataRef = cachedPlatformDataRef ?? platformAdData.GetActive();
 
-        return cachedPlatformDataRef;
+            return cachedPlatformDataRef;
+        } else {
+            return platformAdData.GetActive();
+        }
     }
 
     public void DebugSetRewardReadyEditor(bool wantReady, int rewardRefId = 0) {
@@ -288,11 +261,18 @@ public class AdMob_Manager : MonoBehaviour {
     private void Awake() {
         instance = instance ?? this;
 
-		if (PlayerPrefs.GetInt("admob_test_mode", 0) == 1) {
+        if (PlayerPrefs.GetInt("admob_test_mode", 0) == 1) {
             enableTestMode = true;
             debugLogging = true;
         }
-		
+        
+        // Load the personalisation choice, ad removal status and maturity status
+        isGrantedPersonalisation = PlayerPrefs.GetInt(PREF_PERSONALISATION, 0) == 1;
+        hasPurchasedAdRemoval = PlayerPrefs.GetInt(PREF_AD_REMOVAL, 0) == 1;
+        isMatureUser = PlayerPrefs.GetInt(PREF_MATURE, 0) == 1;
+    }
+
+    private void Start() {
         // We support loading from multiple ad ids to load different types of ads without needing to destroy them to change type and letting us display ads back to back if needed
         // Here we initialise banner related arrays for each bannerRefId type
         PlatformAdData platformAdData = GetPlatformAdData();
@@ -310,7 +290,7 @@ public class AdMob_Manager : MonoBehaviour {
         for (int i = 0; i < totalIntSlots; i++) totalIntFloors[i] = platformAdData.interstitialFloorData[i].floorId.Length;
         for (int i = 0; i < totalBannerSlots; i++) totalBannerFloors[i] = platformAdData.bannerFloorData[i].floorId.Length;
         for (int i = 0; i < totalRewardSlots; i++) totalRewardFloors[i] = platformAdData.rewardFloorData[i].floorId.Length;
-        for (int i = 0; i < totalRewardedIntSlots; i++) totalRewardedIntFloors[i] = platformAdData.rewardedInterstitialFloorData[i].floorId.Length;
+        for (int i = 0; i < totalRewardSlots; i++) totalRewardedIntFloors[i] = platformAdData.rewardedInterstitialFloorData[i].floorId.Length;
         
         preloadBannerType = new BannerSizeType[totalBannerSlots];
         displayPreloadBannerImmediately = new bool[totalBannerSlots];
@@ -356,27 +336,6 @@ public class AdMob_Manager : MonoBehaviour {
         rewardedIntWantedVisible = new bool[totalRewardedIntSlots];
         rewardedIntFloorGroupAttemptedRetries = new int[totalRewardedIntSlots];
 
-        interstitialOnAdClosedCallback = new EventHandler<EventArgs>[totalIntSlots];
-        interstitialOnAdLoadedCallback = new EventHandler<EventArgs>[totalIntSlots];
-        interstitialOnAdOpeningCallback = new EventHandler<EventArgs>[totalIntSlots];
-        interstitialOnAdFailedToLoadCallback = new EventHandler<AdFailedToLoadEventArgs>[totalIntSlots];
-        
-        bannerOnAdClosedCallback = new EventHandler<EventArgs>[totalBannerSlots];
-        bannerOnAdLoadedCallback = new EventHandler<EventArgs>[totalBannerSlots];
-        bannerOnAdOpeningCallback = new EventHandler<EventArgs>[totalBannerSlots];
-        bannerOnAdFailedToLoadCallback = new EventHandler<AdFailedToLoadEventArgs>[totalBannerSlots];
-        
-        rewardOnAdClosedCallback = new EventHandler<EventArgs>[totalRewardSlots];
-        rewardOnAdLoadedCallback = new EventHandler<EventArgs>[totalRewardSlots];
-        rewardOnAdOpeningCallback = new EventHandler<EventArgs>[totalRewardSlots];
-        rewardOnUserEarnedRewardCallback = new EventHandler<Reward>[totalRewardSlots];
-        rewardOnAdFailedToLoadCallback = new EventHandler<AdFailedToLoadEventArgs>[totalRewardSlots];
-        rewardOnAdFailedToShowCallback = new EventHandler<AdErrorEventArgs>[totalRewardSlots];
-        
-        rewardedIntOnPresentFullscreenContent = new EventHandler<EventArgs>[totalRewardedIntSlots];
-        rewardedIntOnDismissFullscreenContent = new EventHandler<EventArgs>[totalRewardedIntSlots];
-        rewardedIntOnAdFailedToPresentFullscreenContent = new EventHandler<AdErrorEventArgs>[totalRewardedIntSlots];
-
         // Get the screen dots per inch
         scrDPI = JarLoader.GetDensity();
 
@@ -387,14 +346,9 @@ public class AdMob_Manager : MonoBehaviour {
             Debug.LogError("DPI checks failed! Falling back to default!");
             scrDPI = 160f;
         }
-
-        // Load the personalisation choice, ad removal status and maturity status
-        isGrantedPersonalisation = PlayerPrefs.GetInt(PREF_PERSONALISATION, 0) == 1;
-        hasPurchasedAdRemoval = PlayerPrefs.GetInt(PREF_AD_REMOVAL, 0) == 1;
-        isMatureUser = PlayerPrefs.GetInt(PREF_MATURE, 0) == 1;
     }
 
-    public void Start() {
+    public void InitializeAdMob() {
         if (enableAdMob) {
             if (debugLogging) {
                 Debug.Log("AdMob Debug - App ID: " + GetPlatformAdData().appId);
@@ -409,9 +363,31 @@ public class AdMob_Manager : MonoBehaviour {
             // Trying to initialize in the editor causes a NuLLReferenceException due to the initialisation status being null
             OnInitializationComplete += OnInitializationFinished;
 
+            // Force pauses the app while interstitials are open on iOS, this also mutes game audio
+            MobileAds.SetiOSAppPauseOnBackground(true);
+
+            RequestConfiguration.Builder adRequestConfiguration = new RequestConfiguration.Builder();
+
+            if (enableTestMode) {
+                List<string> testDeviceIds = new List<string>();
+
+                // All simulators are marked as test devices
+                testDeviceIds.Add(AdRequest.TestDeviceSimulator);
+
+                // Add all devices preset as test devices from the editor inspector
+                foreach (string deviceId in GetPlatformAdData().testDeviceIds)
+                    testDeviceIds.Add(deviceId);
+
+                adRequestConfiguration.SetTestDeviceIds(testDeviceIds);
+            }
+
+            adRequestConfiguration.SetTagForChildDirectedTreatment(GetPlatformAdData().tagForChildDirectedTreatment ? TagForChildDirectedTreatment.True : TagForChildDirectedTreatment.False);
+
+            MobileAds.SetRequestConfiguration(adRequestConfiguration.build());
+
             // Manually initialise admob with an ad manager
             // Initializing AdMob can cause ANRs so make sure the app is doing as little as possible when initializing
-            UnityMainThreadDispatcher.instance.Enqueue(() => MobileAds.Initialize(OnInitializationComplete));
+            MobileAds.Initialize(OnInitializationComplete);
 #endif
         } else {
             Debug.Log("AdMob is not enabled, no adverts will be triggered!");
@@ -436,23 +412,20 @@ public class AdMob_Manager : MonoBehaviour {
     }
 #endif
     
+    // AdMob callback - !! not guaranteed to be called on main thread !!
     private void OnInitializationFinished(InitializationStatus status) {
-        if (enableAdMob) {
-            UnityMainThreadDispatcher.instance.Enqueue(() => FirebaseAnalyticsManager.LogEvent("admob_ttl", "init_partial", Time.realtimeSinceStartup));
+        if (enableAdMob)
+            UnityMainThreadDispatcher.instance.Enqueue(() => AdMobInitializedMainThread(status));
+    }
+
+    private void AdMobInitializedMainThread(InitializationStatus status) {
+        FirebaseAnalyticsManager.LogEvent("admob_ttl", "init_partial", Time.realtimeSinceStartup);
             
-            StartCoroutine(DelayedInitialisationCompletion(status));
-        }
+        StartCoroutine(DelayedInitialisationCompletion(status));
     }
 
     // Extra waiting for mediation plugins to become ready to fix crashes caused by trying to load ads before mediation finished initializing
     private IEnumerator DelayedInitialisationCompletion(InitializationStatus status) {
-        // BUGFIX: Wait before marking admob as initialized and preloading any ads!
-        // There was a bug with IronSource mediation where ironsource SOMETIMES doesn't finish initialising
-        // This caused the app to get stuck in an ANR deadlock when trying to call IronSource.SetConsent(..) as it saw it wasn't initialised and tried to initialise it again
-        // This wait is not needed if not using ironsource mediation
-        //for (int i = 0; i < 15; i++)
-        //    yield return null;
-
         if (debugLogging)
             Debug.Log("AdMob Debug - AdMob Initialization Complete!");
 
@@ -494,33 +467,24 @@ public class AdMob_Manager : MonoBehaviour {
         // Mark admob as ready to load adverts
         isAdMobInitialized = true;
 
-        UnityMainThreadDispatcher.instance.Enqueue(() => FirebaseAnalyticsManager.LogEvent("admob_ttl", "init_full", Time.realtimeSinceStartup));
-        
-        // Force pauses the app while interstitials are open on iOS, this also mutes game audio
-        MobileAds.SetiOSAppPauseOnBackground(true);
+        FirebaseAnalyticsManager.LogEvent("admob_ttl", "init_full", Time.realtimeSinceStartup);
 
         if (OnAdMobReady != null)
             OnAdMobReady.Invoke();
 
-        if (totalRewardSlots > 0) {
-            // There's no harm in attempting to load interstitials again even if one is already pending
-            // Preload a reward ad
+        // Reward and rewarded interstitials always preload regardless of whether ad removal is purchased
+        if (totalRewardSlots > 0)
             PreloadRewardAd();
-        }
 
-        if (totalRewardedIntSlots > 0) {
+        if (totalRewardedIntSlots > 0)
             PreloadRewardedInterstitialAd();
-        }
 
         if (!hasPurchasedAdRemoval) {
             // If we've already sent a manual request to load ads before initialisation finished, don't bother calling the preload banner function
-            if (!activeBannerIsLoading) {
-                // Preload a banner ad
+            if (!bannerIsLoading[activeBannerRefId])
                 PreloadBannerAd();
-            }
 
             // There's no harm in attempting to load interstitials again even if one is already pending
-            // Preload a interstitial ad
             PreloadInterstitialAd();
         }
     }
@@ -569,300 +533,176 @@ public class AdMob_Manager : MonoBehaviour {
             LoadInterstitialAd(false, true, i);
     }
 
-    private void SetupRewardAdCallbacks(int rewardRefId = 0) {
-        PlatformAdData platformAdData = GetPlatformAdData();
+    private void SendRewardAdLoadRequest(int rewardRefId = 0) {
+        if (rewardRefId >= adMobRewardedAd.Length) {
+            Debug.LogError(rewardRefId + " is an invalid reward ad ref id, increase the size of the rewardId array to increase how many reward ads can be loaded at once.");
+            return;
+        }
+        
+        if (adMobRewardedAd[rewardRefId] != null)
+            adMobRewardedAd[rewardRefId].Destroy();
 
-        adMobRewardedAd[rewardRefId] = new RewardedAd(platformAdData.rewardFloorData[rewardRefId].floorId[rewardWantedFloorId]);
+        RewardedAd.Load(GetPlatformAdData().rewardFloorData[rewardRefId].floorId[rewardWantedFloorId], GenerateAdRequest(),
+            (RewardedAd ad, LoadAdError loadError) => {
+                if (loadError != null || ad == null) {
+                    RewardAdFailedToLoad(loadError, rewardRefId); // Ad failed to load callback
+                    return;
+                }
 
-        rewardOnAdClosedCallback[rewardRefId] = (sender, args) => RewardAdClosed(sender, args, rewardRefId);
-        rewardOnAdLoadedCallback[rewardRefId] = (sender, args) => RewardAdLoaded(sender, args, rewardRefId);
-        rewardOnAdOpeningCallback[rewardRefId] = (sender, args) => RewardAdVisible(sender, args, rewardRefId);
-        rewardOnUserEarnedRewardCallback[rewardRefId] = (sender, reward) => RewardAdRewarded(sender, reward, rewardRefId);
-        rewardOnAdFailedToLoadCallback[rewardRefId] = (sender, args) => RewardAdFailedToLoad(sender, args, rewardRefId);
-        rewardOnAdFailedToShowCallback[rewardRefId] = (sender, args) => RewardAdFailedToShow(sender, args, rewardRefId);
+                adMobRewardedAd[rewardRefId] = ad;
+                RewardAdLoaded(rewardRefId); // Ad loaded callback
 
-        adMobRewardedAd[rewardRefId].OnAdClosed += rewardOnAdClosedCallback[rewardRefId];
-        adMobRewardedAd[rewardRefId].OnAdLoaded += rewardOnAdLoadedCallback[rewardRefId];
-        adMobRewardedAd[rewardRefId].OnAdOpening += rewardOnAdOpeningCallback[rewardRefId];
-        adMobRewardedAd[rewardRefId].OnUserEarnedReward += rewardOnUserEarnedRewardCallback[rewardRefId];
-        adMobRewardedAd[rewardRefId].OnAdFailedToLoad += rewardOnAdFailedToLoadCallback[rewardRefId];
-        adMobRewardedAd[rewardRefId].OnAdFailedToShow += rewardOnAdFailedToShowCallback[rewardRefId];
+                ad.OnAdFullScreenContentOpened += () => RewardAdVisible(rewardRefId); // Ad opening callback
+                ad.OnAdFullScreenContentClosed += () => RewardAdClosed(rewardRefId); // Ad closed callback
+                // Note: Reward ad rewarded and failed to show callbacks are now handled when calling to show the reward ad
+            }
+        );
     }
 
-    private void RewardedInterstitialAdCallback(RewardedInterstitialAd ad, AdFailedToLoadEventArgs errorArgs, int rewardedIntRefId = 0) {
-        // errorArgs will be null if the ad did not fail to load
-        if (errorArgs == null) {
-            adMobRewardedInterstitialAd[rewardedIntRefId] = ad;
-
-            RewardedInterstitialAdLoaded(ad, rewardedIntRefId);
-            
-            rewardedIntOnPresentFullscreenContent[rewardedIntRefId] = (sender, args) =>  RewardedInterstitialAdVisible(sender, args, rewardedIntRefId);
-            rewardedIntOnDismissFullscreenContent[rewardedIntRefId] = (sender, args) => RewardedInterstitialAdClosed(sender, args, rewardedIntRefId);
-            rewardedIntOnAdFailedToPresentFullscreenContent[rewardedIntRefId] = (sender, args) => RewardedInterstitialAdFailedToShow(sender, args, rewardedIntRefId);
-
-            adMobRewardedInterstitialAd[rewardedIntRefId].OnAdDidPresentFullScreenContent += rewardedIntOnPresentFullscreenContent[rewardedIntRefId];
-            adMobRewardedInterstitialAd[rewardedIntRefId].OnAdDidDismissFullScreenContent += rewardedIntOnDismissFullscreenContent[rewardedIntRefId];
-            adMobRewardedInterstitialAd[rewardedIntRefId].OnAdFailedToPresentFullScreenContent += rewardedIntOnAdFailedToPresentFullscreenContent[rewardedIntRefId];
-        } else {
-            RewardedInterstitialAdFailedToLoad(ad, errorArgs, rewardedIntRefId);
+    private void SendRewardedInterstitialLoadRequest(int rewardedIntRefId = 0) {
+        if (rewardedIntRefId >= adMobRewardedInterstitialAd.Length) {
+            Debug.LogError(rewardedIntRefId + " is an invalid rewarded interstitial ad ref id, increase the size of the rewardedIntId array to increase how many rewarded interstitial ads can be loaded at once.");
+            return;
         }
+
+        if (adMobRewardedInterstitialAd[rewardedIntRefId] != null)
+            adMobRewardedInterstitialAd[rewardedIntRefId].Destroy();
+
+        RewardedInterstitialAd.Load(GetPlatformAdData().rewardedInterstitialFloorData[rewardedIntRefId].floorId[rewardedIntWantedFloorId], GenerateAdRequest(),
+            (RewardedInterstitialAd ad, LoadAdError loadError) => {
+                if (loadError != null || ad == null) {
+                    RewardedInterstitialAdFailedToLoad(loadError, rewardedIntRefId); // Ad failed to load callback
+                    return;
+                }
+
+                adMobRewardedInterstitialAd[rewardedIntRefId] = ad;
+                RewardedInterstitialAdLoaded(rewardedIntRefId); // Ad loaded callback
+
+                ad.OnAdFullScreenContentOpened += () => RewardedInterstitialAdVisible(rewardedIntRefId);
+                ad.OnAdFullScreenContentClosed += () => RewardedInterstitialAdClosed(rewardedIntRefId);
+                // Note: Rewarded interstitial rewarded and failed to show callbacks are now handled when calling to show the reward ad
+            }
+        );
     }
     
     private bool IsStandardBannerSize(AdSize adSize) {
         return (adSize == AdSize.Banner || adSize == AdSize.Leaderboard || adSize == AdSize.MediumRectangle || adSize == AdSize.SmartBanner || adSize == AdSize.IABBanner);
     }
-    
-    // When a new adsize is wanted a new ad request must be made from scratch, re-generating the adMobBanner reference
-    // Note: If you just want to hide/move the admob banner use the respective hide or reposition functions instead
-    private void SetupBannerAdCallbacks(AdSize adSize, AdPosition adPosition, int bannerRefId = 0) {
-        PlatformAdData platformAdData = GetPlatformAdData();
+
+    private void SendBannerAdLoadRequest(AdSize adSize, int xPos, int yPos, int bannerRefId = 0) {
+        SendBannerAdLoadRequest(adSize, AdPosition.TopLeft, xPos, yPos, bannerRefId);
+    }
+
+    private void SendBannerAdLoadRequest(AdSize adSize, AdPosition adPosition, int bannerRefId = 0) {
+        SendBannerAdLoadRequest(adSize, adPosition, 0, 0, bannerRefId);
+    }
+
+    private void SendBannerAdLoadRequest(AdSize adSize, AdPosition adPosition, int xPos, int yPos, int bannerRefId) {
+        if (bannerRefId >= adMobBanner.Length) {
+            Debug.LogError(bannerRefId + " is an invalid banner ad ref id, increase the size of the bannerId array to increase how many banner ads can be loaded at once.");
+            return;
+        }
 
         AdSize actualAdSize = adSize;
 
-        // Don't use adaptive banner sizes in the editor as the admob editor previews doesn't know how to display them, so let it use smart banners in the editor
+        // If useCustomSmartBannerSize is enabled then SmartBanners will be converted into adaptive banner sizes
+        if (useCustomSmartBannerSize && adSize == AdSize.SmartBanner)
+            actualAdSize = AdSize.GetCurrentOrientationAnchoredAdaptiveBannerAdSizeWithWidth(AdSize.FullWidth);
+        
 #if !UNITY_EDITOR
-            // On devices if useCustomSmartBannerSize is set then smart banners are replaced with adaptive banners
-            if (useCustomSmartBannerSize && adSize == AdSize.SmartBanner) {
-    #if UNITY_IOS
-			    float scrHeight = PxToPt(Screen.height);
-    #else
-                float scrHeight = PxToDp(Screen.height);
-    #endif
-
-                AdSize adaptiveSize = AdSize.GetCurrentOrientationAnchoredAdaptiveBannerAdSizeWithWidth(AdSize.FullWidth);
-                actualAdSize = adaptiveSize;
-            }
-#endif
-
-#if UNITY_EDITOR
-        // The Unity editor banner preview throws a KeyNotFoundException if we try showing a custom sized banner
-        // Show a standard sized banner to avoid this
-        // Hopefully google fixes this some day...
-        if (!IsStandardBannerSize(actualAdSize)) {
-            switch (actualAdSize.AdType) {
-                case AdSize.Type.Standard:
-                    actualAdSize = AdSize.MediumRectangle;
-                    break;
-                case AdSize.Type.SmartBanner:
-                    actualAdSize = AdSize.SmartBanner;
-                    break;
-                case AdSize.Type.AnchoredAdaptive:
-                    actualAdSize = AdSize.MediumRectangle;
-                    break;
-            }
-
-            Debug.Log("Falling back to showing a " + actualAdSize.Width + " x " + actualAdSize.Height + " editor admob ad as custom editor preview sizes are not yet supported!");
-        }
-#endif
-        
-        bannerOnAdClosedCallback[bannerRefId] = (sender, args) => BannerAdClosed(sender, args, bannerRefId);
-        bannerOnAdLoadedCallback[bannerRefId] = (sender, args) => BannerAdLoaded(sender, args, bannerRefId);
-        bannerOnAdOpeningCallback[bannerRefId] = (sender, args) => BannerAdVisible(sender, args, bannerRefId);
-        bannerOnAdFailedToLoadCallback[bannerRefId] = (sender, args) => BannerAdFailedToLoad(sender, args, bannerRefId);
-        
-        // Unregister the previous banner (if one exists)
-        if (adMobBanner[bannerRefId] != null) {
-            adMobBanner[bannerRefId].OnAdClosed -= bannerOnAdClosedCallback[bannerRefId];
-            adMobBanner[bannerRefId].OnAdLoaded -= bannerOnAdLoadedCallback[bannerRefId];
-            adMobBanner[bannerRefId].OnAdOpening -= bannerOnAdOpeningCallback[bannerRefId];
-            adMobBanner[bannerRefId].OnAdFailedToLoad -= bannerOnAdFailedToLoadCallback[bannerRefId];
-
+        if(adMobBanner[bannerRefId] != null)
             adMobBanner[bannerRefId].Destroy();
+#else
+        if(adMobBanner[bannerRefId] != null)
+            adMobBanner[bannerRefId].Hide();
+#endif
+        
+        // If the adPosition is TopLeft use the x and y positions to set the ad offset
+        if (adPosition == AdPosition.TopLeft) {
+            adMobBanner[bannerRefId] = new BannerView(GetPlatformAdData().bannerFloorData[bannerRefId].floorId[bannerWantedFloorId], actualAdSize, xPos, yPos);
+        } else {
+            adMobBanner[bannerRefId] = new BannerView(GetPlatformAdData().bannerFloorData[bannerRefId].floorId[bannerWantedFloorId], actualAdSize, adPosition);
         }
 
-        // Load a banner ad marking it as hidden, this script will handle showing the banner
-        adMobBanner[bannerRefId] = new BannerView(platformAdData.bannerFloorData[bannerRefId].floorId[bannerWantedFloorId], actualAdSize, adPosition);
-
-        // Fixes a bug where banners would flash on the screen for a frame when being loaded
+        adMobBanner[bannerRefId].LoadAd(GenerateAdRequest());
+        
+        // Fixes a bug where banners would flash on the screen for a frame when being loaded and creating a dummy banner in the editor..
         adMobBanner[bannerRefId].Hide();
-
-        // Register the banner ad events
-        adMobBanner[bannerRefId].OnAdClosed += bannerOnAdClosedCallback[bannerRefId];
-        adMobBanner[bannerRefId].OnAdLoaded += bannerOnAdLoadedCallback[bannerRefId];
-        adMobBanner[bannerRefId].OnAdOpening += bannerOnAdOpeningCallback[bannerRefId];
-        adMobBanner[bannerRefId].OnAdFailedToLoad += bannerOnAdFailedToLoadCallback[bannerRefId];
-
+        
         bannerIsLoading[bannerRefId] = true;
         bannerIsVisible[bannerRefId] = false;
         bannerIsReady[bannerRefId] = false;
 
-        activeBannerIsLoading = true;
-        activeBannerIsVisible = false;
-        activeBannerIsReady = false;
-
-        bannerInMemorySize[bannerRefId] = adSize;
+        bannerInMemorySize[bannerRefId] = adSize; // Keeps reference to initial requested adSize
         bannerInMemorySizeSet[bannerRefId] = true;
 
         bannerInMemoryPosition[bannerRefId] = adPosition;
         bannerInMemoryPositionSet[bannerRefId] = true;
 
-        bannerInMemoryUseXYPosition[bannerRefId] = false;
-    }
-
-    // When a new adsize is wanted a new ad request must be made from scratch, re-generating the adMobBanner reference
-    // Note: If you just want to hide/move the admob banner use the respective hide or reposition functions instead
-    private void SetupBannerAdCallbacks(AdSize adSize, int xPos, int yPos, int bannerRefId = 0) {
-        if (bannerRefId >= adMobBanner.Length) {
-            Debug.LogError(bannerRefId + " is an invalid banner ref id, increase the size of the bannerId array to increase how many banners can be loaded at once.");
-            return;
-        }
-        
-        PlatformAdData platformAdData = GetPlatformAdData();
-
-        // Unregister the previous banner (if one exists)
-        if (adMobBanner[bannerRefId] != null) {
-            adMobBanner[bannerRefId].OnAdClosed -= bannerOnAdClosedCallback[bannerRefId];
-            adMobBanner[bannerRefId].OnAdLoaded -= bannerOnAdLoadedCallback[bannerRefId];
-            adMobBanner[bannerRefId].OnAdOpening -= bannerOnAdOpeningCallback[bannerRefId];
-            adMobBanner[bannerRefId].OnAdFailedToLoad -= bannerOnAdFailedToLoadCallback[bannerRefId];
-
-            adMobBanner[bannerRefId].Destroy();
-        }
-
-        AdSize actualAdSize = adSize;
-
-// Don't use adaptive banner sizes in the editor as the admob editor previews doesn't know how to display them, so let it use smart banners in the editor
-#if !UNITY_EDITOR
-        // On devices if useCustomSmartBannerSize is set then smart banners are replaced with adaptive banners
-        if (useCustomSmartBannerSize && adSize == AdSize.SmartBanner) {
-#if UNITY_IOS
-			float scrHeight = PxToPt(Screen.height);
-#else
-            float scrHeight = PxToDp(Screen.height);
-#endif
-
-            //int wantedAdHeight = scrHeight > 720f ? 90 : 50;
-            //actualAdSize = new AdSize(AdSize.FullWidth, wantedAdHeight);
-
-            AdSize adaptiveSize = AdSize.GetCurrentOrientationAnchoredAdaptiveBannerAdSizeWithWidth(AdSize.FullWidth);
-            actualAdSize = adaptiveSize;
-        }
-#endif
-        
-#if UNITY_EDITOR
-        // The Unity editor banner preview throws a KeyNotFoundException if we try showing a custom sized banner
-        // Show a standard sized banner to avoid this
-        // Hopefully google fixes this some day...
-        if (!IsStandardBannerSize(actualAdSize)) {
-            switch (actualAdSize.AdType) {
-                case AdSize.Type.Standard: actualAdSize = AdSize.MediumRectangle; break;
-                case AdSize.Type.SmartBanner: actualAdSize = AdSize.SmartBanner; break;
-                case AdSize.Type.AnchoredAdaptive:actualAdSize = AdSize.MediumRectangle; break;
-            }
-
-            Debug.Log("Falling back to showing a " + actualAdSize.Width + " x " + actualAdSize.Height + " editor admob ad as custom editor preview sizes are not yet supported!");
-        }
-#endif
-        
-        // Load a banner ad marking it as hidden, this script will handle showing the banner
-        // Note: Don't worry about 'Invalid ad size requested' messages, they are just from UnityAds banner mediation
-        // As UnityAds banners only support aspect ratios of 0.5 x 0.7 (or 0.7 x 0.5) (aka BANNER or LEADERBOARD ad sizes)
-        adMobBanner[bannerRefId] = new BannerView(platformAdData.bannerFloorData[bannerRefId].floorId[bannerWantedFloorId], actualAdSize, xPos, yPos);
-
-        // Fixes a bug where banners would flash on the screen for a frame when being loaded
-        adMobBanner[bannerRefId].Hide();
-
-        bannerIsLoading[bannerRefId] = true;
-        bannerIsVisible[bannerRefId] = false;
-        bannerIsReady[bannerRefId] = false;
-
-        activeBannerIsLoading = true;
-        activeBannerIsVisible = false;
-        activeBannerIsReady = false;
-
-        bannerOnAdClosedCallback[bannerRefId] = (sender, args) => BannerAdClosed(sender, args, bannerRefId);
-        bannerOnAdLoadedCallback[bannerRefId] = (sender, args) => BannerAdLoaded(sender, args, bannerRefId);
-        bannerOnAdOpeningCallback[bannerRefId] = (sender, args) => BannerAdVisible(sender, args, bannerRefId);
-        bannerOnAdFailedToLoadCallback[bannerRefId] = (sender, args) => BannerAdFailedToLoad(sender, args, bannerRefId);
-
-        // Register the banner ad events
-        adMobBanner[bannerRefId].OnAdClosed += bannerOnAdClosedCallback[bannerRefId];
-        adMobBanner[bannerRefId].OnAdLoaded += bannerOnAdLoadedCallback[bannerRefId];
-        adMobBanner[bannerRefId].OnAdOpening += bannerOnAdOpeningCallback[bannerRefId];
-        adMobBanner[bannerRefId].OnAdFailedToLoad += bannerOnAdFailedToLoadCallback[bannerRefId];
-
-        bannerInMemorySize[bannerRefId] = adSize;
-        bannerInMemorySizeSet[bannerRefId] = true;
-
-        bannerInMemoryPosition[bannerRefId] = AdPosition.TopLeft; // Manual x,y positioning uses the top left as the base position
-        bannerInMemoryPositionSet[bannerRefId] = true;
-
         bannerInMemoryPositionXY[bannerRefId] = new IntVector2(xPos, yPos);
-        bannerInMemoryUseXYPosition[bannerRefId] = true;
+        bannerInMemoryUseXYPosition[bannerRefId] = adPosition == AdPosition.TopLeft;
+        
+#if !UNITY_EDITOR
+        adMobBanner[bannerRefId].OnBannerAdLoaded += () => BannerAdLoaded(bannerRefId);
+        adMobBanner[bannerRefId].OnBannerAdLoadFailed += (LoadAdError error) => BannerAdFailedToLoad(error, bannerRefId);
+#else
+        // Callbacks don't trigger in the editor so just trigger a success response now
+        BannerAdLoaded(bannerRefId);
+#endif
     }
 
-    private void SetupInterstitialAdCallbacks(int interstitialRefId = 0) {
+    // Send the request to load the interstitial ad and setup callbacks related to loading the ad
+    private void SendInterstitialLoadRequest(int interstitialRefId = 0) {
         if (interstitialRefId >= adMobInterstitial.Length) {
             Debug.LogError(interstitialRefId + " is an invalid interstitial ref id, increase the size of the interstitialId array to increase how many interstitials can be loaded at once.");
             return;
         }
         
-        PlatformAdData platformAdData = GetPlatformAdData();
-        
-        // Unregister the previous interstitial (if one existed)
-        if (adMobInterstitial[interstitialRefId] != null) {
-            adMobInterstitial[interstitialRefId].OnAdClosed -= interstitialOnAdClosedCallback[interstitialRefId];
-            adMobInterstitial[interstitialRefId].OnAdLoaded -= interstitialOnAdLoadedCallback[interstitialRefId];
-            adMobInterstitial[interstitialRefId].OnAdOpening -= interstitialOnAdOpeningCallback[interstitialRefId];
-            adMobInterstitial[interstitialRefId].OnAdFailedToLoad -= interstitialOnAdFailedToLoadCallback[interstitialRefId];
-
+        // Cleanup the previous interstitial (if exists)
+        if (adMobInterstitial[interstitialRefId] != null)
             adMobInterstitial[interstitialRefId].Destroy();
-        }
 
-        adMobInterstitial[interstitialRefId] = new InterstitialAd(platformAdData.interstitialFloorData[interstitialRefId].floorId[intWantedFloorId]);
+        InterstitialAd.Load(GetPlatformAdData().interstitialFloorData[interstitialRefId].floorId[intWantedFloorId], GenerateAdRequest(),
+            (InterstitialAd ad, LoadAdError loadError) => {
+                if (loadError != null || ad == null) {
+                    InterstitialAdFailedToLoad(loadError, interstitialRefId); // Ad failed to load callback
+                    return;
+                }
 
-        interstitialOnAdClosedCallback[interstitialRefId] = (sender, args) => InterstitialAdClosed(sender, args, interstitialRefId);
-        interstitialOnAdLoadedCallback[interstitialRefId] = (sender, args) => InterstitialAdLoaded(sender, args, interstitialRefId);
-        interstitialOnAdOpeningCallback[interstitialRefId] = (sender, args) => InterstitialAdVisible(sender, args, interstitialRefId);
-        interstitialOnAdFailedToLoadCallback[interstitialRefId] = (sender, args) => InterstitialAdFailedToLoad(sender, args, interstitialRefId);
-        
-        adMobInterstitial[interstitialRefId].OnAdClosed += interstitialOnAdClosedCallback[interstitialRefId];
-        adMobInterstitial[interstitialRefId].OnAdLoaded += interstitialOnAdLoadedCallback[interstitialRefId];
-        adMobInterstitial[interstitialRefId].OnAdOpening += interstitialOnAdOpeningCallback[interstitialRefId];
-        adMobInterstitial[interstitialRefId].OnAdFailedToLoad += interstitialOnAdFailedToLoadCallback[interstitialRefId];
+                adMobInterstitial[interstitialRefId] = ad;
+                InterstitialAdLoaded(interstitialRefId); // Ad loaded callback
+                
+                ad.OnAdFullScreenContentOpened += () => InterstitialAdVisible(interstitialRefId); // Ad opening callback
+                ad.OnAdFullScreenContentClosed += () => InterstitialAdClosed(interstitialRefId); // Ad closed callback
+            }
+        );
     }
 
     private AdRequest GenerateAdRequest() {
         AdRequest.Builder adBuilder = new AdRequest.Builder();
-        RequestConfiguration.Builder adRequestConfiguration = new RequestConfiguration.Builder();
 
-        PlatformAdData platformAdData = GetPlatformAdData();
-        
         // Ad personalisation opt in
         adBuilder.AddExtra("npa", isGrantedPersonalisation ? "0" : "1");
 
-        if (enableTestMode) {
-            List<string> testDeviceIds = new List<string>();
+        // Editor mediation consent calls do a lot of debug logging which we don't need to see
+        // Not using editor define so we get editor script errors when plugins missing
+        if (!Application.isEditor) {
+            Chartboost.AddDataUseConsent(isGrantedPersonalisation ? CBGDPRDataUseConsent.Behavioral : CBGDPRDataUseConsent.NonBehavioral);
 
-            // All simulators are marked as test devices
-            testDeviceIds.Add(AdRequest.TestDeviceSimulator);
+            AdColonyAppOptions.SetUserId(FirebaseManager.instance.persistantUserId);
+            AdColonyAppOptions.SetTestMode(enableTestMode);
 
-            // Add all devices preset as test devices from the editor inspector
-            foreach (string deviceId in platformAdData.testDeviceIds)
-                testDeviceIds.Add(deviceId);
+            AdColonyAppOptions.SetPrivacyFrameworkRequired(AdColonyPrivacyFramework.GDPR, true);
+            AdColonyAppOptions.SetPrivacyConsentString(AdColonyPrivacyFramework.GDPR, isGrantedPersonalisation ? "1" : "0");
 
-            adRequestConfiguration.SetTestDeviceIds(testDeviceIds);
+            UnityAds.SetConsentMetaData("gdpr.consent", isGrantedPersonalisation);
+
+            Dictionary<string, string> inMobiConsentDict = new Dictionary<string, string>();
+            inMobiConsentDict.Add("gdpr_consent_available", isGrantedPersonalisation ? "true" : "false");
+            inMobiConsentDict.Add("gdpr", "1");
+
+            InMobi.UpdateGDPRConsent(inMobiConsentDict);
         }
-
-        Chartboost.AddDataUseConsent(isGrantedPersonalisation ? CBGDPRDataUseConsent.Behavioral : CBGDPRDataUseConsent.NonBehavioral);
-        
-        AdColonyAppOptions.SetUserId(FirebaseManager.instance.persistantUserId);
-        AdColonyAppOptions.SetTestMode(enableTestMode);
-
-        AdColonyAppOptions.SetGDPRRequired(true);
-        AdColonyAppOptions.SetGDPRConsentString(isGrantedPersonalisation ? "1" : "0");
-
-        UnityAds.SetConsentMetaData("gdpr.consent", isGrantedPersonalisation);
-
-        Dictionary<string, string> inMobiConsentDict = new Dictionary<string, string>();
-        inMobiConsentDict.Add("gdpr_consent_available", isGrantedPersonalisation ? "true" : "false");
-        inMobiConsentDict.Add("gdpr", "1");
-
-        InMobi.UpdateGDPRConsent(inMobiConsentDict);
-
-        adRequestConfiguration.SetTagForChildDirectedTreatment(platformAdData.tagForChildDirectedTreatment ? TagForChildDirectedTreatment.True : TagForChildDirectedTreatment.False);
-
-        MobileAds.SetRequestConfiguration(adRequestConfiguration.build());
 
         return adBuilder.Build();
     }
@@ -911,9 +751,9 @@ public class AdMob_Manager : MonoBehaviour {
 
             rewardedIntIsLoading[rewardIntRefId] = true;
             rewardedIntWantedVisible[rewardIntRefId] = displayImmediately;
-
+            
             // Ensure the admob request is sent on the main thread, otherwise it may cause unexpected behaviour on iOS
-            UnityMainThreadDispatcher.instance.Enqueue(() => RewardedInterstitialAd.LoadAd(GetPlatformAdData().rewardedInterstitialFloorData[rewardIntRefId].floorId[rewardedIntWantedFloorId], GenerateAdRequest(), (sender, args) => { RewardedInterstitialAdCallback(sender, args, rewardIntRefId);}));
+            UnityMainThreadDispatcher.instance.Enqueue(() => SendRewardedInterstitialLoadRequest(rewardIntRefId));
         } else {
             if (debugLogging)
                 Debug.Log("AdMob Debug - Rewarded Interstitial ad already pending/ready!");
@@ -1005,14 +845,11 @@ public class AdMob_Manager : MonoBehaviour {
             if (debugLogging)
                 Debug.Log("AdMob Debug - Reward ad loading!");
 
-            // If the reward ad instance isn't set then the callbacks will be registered
-            SetupRewardAdCallbacks(rewardRefId);
-
             rewardIsLoading[rewardRefId] = true;
             rewardWantedVisible[rewardRefId] = displayImmediately;
 
             // Ensure the admob request is sent on the main thread, otherwise it may caused unexpected behaviour on iOS
-            UnityMainThreadDispatcher.instance.Enqueue(() => adMobRewardedAd[rewardRefId].LoadAd(GenerateAdRequest()));
+            UnityMainThreadDispatcher.instance.Enqueue(() => SendRewardAdLoadRequest(rewardRefId));
         } else {
             if (debugLogging)
                 Debug.Log("AdMob Debug - Reward ad already pending/ready!");
@@ -1056,7 +893,14 @@ public class AdMob_Manager : MonoBehaviour {
                 if (adMobRewardedAd[rewardRefId] != null) {
                     // We're ready to show the reward ad
                     // Ensure the admob request is sent on the main thread, otherwise it may caused unexpected behaviour on iOS
-                    UnityMainThreadDispatcher.instance.Enqueue(() => adMobRewardedAd[rewardRefId].Show());
+                    UnityMainThreadDispatcher.instance.Enqueue(() => adMobRewardedAd[rewardRefId].Show((Reward reward) => {
+                        if (reward == null) {
+                            RewardAdFailedToShow(rewardRefId);
+                            return;
+                        }
+
+                        RewardAdRewarded(reward, rewardRefId);
+                    }));
                 }
             } else {
                 LoadRewardAd(true, rewardRefId, true);
@@ -1106,14 +950,12 @@ public class AdMob_Manager : MonoBehaviour {
 
         // Check if we can perform the action for the current method
         if (!intIsLoading[interstitialRefId] && !intIsReady[interstitialRefId] && !intIsVisible[interstitialRefId]) {
-            SetupInterstitialAdCallbacks();
-
             intIsLoading[interstitialRefId] = true;
             intWantedVisible[interstitialRefId] = displayImmediately;
 
             if (adMobInterstitial != null) {
                 // Ensure the admob request is sent on the main thread, otherwise it may caused unexpected behaviour on iOS
-                UnityMainThreadDispatcher.instance.Enqueue(() => adMobInterstitial[interstitialRefId].LoadAd(GenerateAdRequest()));
+                UnityMainThreadDispatcher.instance.Enqueue(() => SendInterstitialLoadRequest(interstitialRefId));
             }
         } else {
             if (displayImmediately)
@@ -1157,7 +999,7 @@ public class AdMob_Manager : MonoBehaviour {
                         Debug.LogError("Wait screen enabled but no gameobject was set! Interstitial will not be delayed..");
 
                         if (adMobInterstitial[interstitialRefId] != null) {
-                            // Show the interstitial    
+                            // Show the interstitial
                             // Ensure the admob request is sent on the main thread, otherwise it may caused unexpected behaviour on iOS
                             UnityMainThreadDispatcher.instance.Enqueue(() => adMobInterstitial[interstitialRefId].Show());
                         }
@@ -1217,7 +1059,7 @@ public class AdMob_Manager : MonoBehaviour {
             interstitialWaitScreen.SetActive(false);
 
         // Show banner ad again if one was visible previously
-        ShowBannerAd();
+        ShowBannerAd(activeBannerRefId);
 
         isIntLoadingScreenActive = false;
     }
@@ -1295,7 +1137,6 @@ public class AdMob_Manager : MonoBehaviour {
             SetActiveBannerRefId(bannerRefId);
 
         bannerWantedVisible[bannerRefId] = displayImmediately;
-        activeBannerWantedVisible = displayImmediately;
 
         if (displayImmediately)
             bannerOverlayDepth = 0;
@@ -1304,12 +1145,9 @@ public class AdMob_Manager : MonoBehaviour {
         if (!bannerIsLoading[bannerRefId] && !bannerIsReady[bannerRefId] && !bannerIsVisible[bannerRefId]) {
             if (isAdMobInitialized) {
                 bannerIsLoading[bannerRefId] = true;
-                activeBannerIsLoading = true;
-
-                SetupBannerAdCallbacks(adSize, adPosition, bannerRefId);
 
                 // Ensure the admob request is sent on the main thread, otherwise it causes issues on iOS duplicating ads
-                UnityMainThreadDispatcher.instance.Enqueue(() => InternalLoadBanner(bannerRefId, GenerateAdRequest()));
+                UnityMainThreadDispatcher.instance.Enqueue(() => SendBannerAdLoadRequest(adSize, adPosition, bannerRefId));
             } else {
                 // Override what banner will load when initialisation completes
                 if (adSize != AdSize.SmartBanner) {
@@ -1336,7 +1174,7 @@ public class AdMob_Manager : MonoBehaviour {
                              ShowBannerAd(bannerRefId, true);
 #else
                         // AdMob banner editor previews currently do not support SetPosition so we need to destroy and remake the ad in the editor
-                        bannerReloadCoroutine = StartCoroutine(ReloadBannerAd(adSize, adPosition, displayImmediately, bannerRefId));
+                        StartCoroutine(ReloadBannerAd(adSize, adPosition, displayImmediately, bannerRefId));
 #endif
                     }
                 } else {
@@ -1352,12 +1190,10 @@ public class AdMob_Manager : MonoBehaviour {
                     }
                 }
 
-                bannerReloadCoroutine = StartCoroutine(ReloadBannerAd(adSize, adPosition, displayImmediately, bannerRefId));
+                StartCoroutine(ReloadBannerAd(adSize, adPosition, displayImmediately, bannerRefId));
             }
         }
     }
-
-    private Coroutine bannerReloadCoroutine;
 
     private IEnumerator ReloadBannerAd(AdSize adSize, AdPosition adPosition, bool displayImmediately = false, int bannerRefId = 0) {
         if (debugLogging)
@@ -1400,7 +1236,6 @@ public class AdMob_Manager : MonoBehaviour {
             SetActiveBannerRefId(bannerRefId);
 
         bannerWantedVisible[bannerRefId] = displayImmediately;
-        activeBannerWantedVisible = displayImmediately;
 
         if (displayImmediately)
             bannerOverlayDepth = 0;
@@ -1409,12 +1244,9 @@ public class AdMob_Manager : MonoBehaviour {
         if (!bannerIsLoading[bannerRefId] && !bannerIsReady[bannerRefId] && !bannerIsVisible[bannerRefId]) {
             if (isAdMobInitialized) {
                 bannerIsLoading[bannerRefId] = true;
-                activeBannerIsLoading = true;
-
-                SetupBannerAdCallbacks(adSize, xPos, yPos, bannerRefId);
 
                 // Ensure the admob request is sent on the main thread, otherwise it causes issues on iOS duplicating ads
-                UnityMainThreadDispatcher.instance.Enqueue(() => InternalLoadBanner(bannerRefId, GenerateAdRequest()));
+                UnityMainThreadDispatcher.instance.Enqueue(() => SendBannerAdLoadRequest(adSize, xPos, yPos, bannerRefId));
             } else {
                 // Override what banner will load when initialisation completes
                 if (adSize != AdSize.SmartBanner) {
@@ -1434,30 +1266,26 @@ public class AdMob_Manager : MonoBehaviour {
                         Debug.Log("AdMob Debug - Repositioning AdMob Banner to " + xPos + ", " + yPos);
                     
 #if !UNITY_EDITOR
-                    // Ensure the admob request is sent on the main thread, otherwise it may caused unexpected behaviour on iOS
-                    UnityMainThreadDispatcher.instance.Enqueue(() => InternalSetBannerPosition(bannerRefId, xPos, yPos));
+                    InternalSetBannerPosition(bannerRefId, xPos, yPos);
                     
                     if (displayImmediately && !bannerIsVisible[bannerRefId])
                         ShowBannerAd(bannerRefId, true);
 #else
                     // AdMob banner editor previews currently do not support SetPosition so we need to destroy and remake the ad in the editor
-                    bannerReloadCoroutine = StartCoroutine(ReloadBannerAd(adSize, xPos, yPos, displayImmediately, bannerRefId));
+                    StartCoroutine(ReloadBannerAd(adSize, xPos, yPos, displayImmediately, bannerRefId));
 #endif
                 }
             } else {
-                bannerReloadCoroutine = StartCoroutine(ReloadBannerAd(adSize, xPos, yPos, displayImmediately, bannerRefId));
+                StartCoroutine(ReloadBannerAd(adSize, xPos, yPos, displayImmediately, bannerRefId));
             }
         }
     }
 
-    private void InternalLoadBanner(int bannerRefId, AdRequest request) {
-        if (adMobBanner.Length > bannerRefId && adMobBanner[bannerRefId] != null)
-            adMobBanner[bannerRefId].LoadAd(request);
-    }
-
     private void InternalSetBannerPosition(int bannerRefId, int xPos, int yPos) {
-        if (adMobBanner.Length > bannerRefId && adMobBanner[bannerRefId] != null)
-            adMobBanner[bannerRefId].SetPosition(xPos, yPos);
+        if (adMobBanner.Length > bannerRefId && adMobBanner[bannerRefId] != null) {
+            // Ensure the admob request is sent on the main thread, otherwise it may caused unexpected behaviour on iOS
+            UnityMainThreadDispatcher.instance.Enqueue(() => adMobBanner[bannerRefId].SetPosition(xPos, yPos));
+        }
     }
 
     /// <summary>
@@ -1471,7 +1299,7 @@ public class AdMob_Manager : MonoBehaviour {
     public void LoadBannerAd(int width, int height, int xPos, int yPos, bool displayImmediately = false, int bannerRefId = 0) {
         if (!enableAdMob || hasPurchasedAdRemoval)
             return;
-
+        
         LoadBannerAd(new AdSize(width, height), xPos, yPos, displayImmediately, bannerRefId);
     }
 
@@ -1490,9 +1318,6 @@ public class AdMob_Manager : MonoBehaviour {
             }
 
             bannerWantedVisible[bannerRefId] = displayImmediately;
-
-            if (bannerRefId == activeBannerRefId)
-                activeBannerWantedVisible = displayImmediately;
         } else {
             if (bannerInMemoryUseXYPosition[bannerRefId]) {
                 LoadBannerAd(bannerInMemorySize[bannerRefId], bannerInMemoryPositionXY[bannerRefId].x, bannerInMemoryPositionXY[bannerRefId].y, displayImmediately, bannerRefId);
@@ -1502,35 +1327,29 @@ public class AdMob_Manager : MonoBehaviour {
         }
     }
 
-    private int activeBannerRefId;
+    public int activeBannerRefId { get; set; }
 
     public void SetActiveBannerRefId(int bannerRefId) {
-        // Force hide all banners and reset their overlay depths
-        HideBannerAd(false);
+        // Force hide all other banners and reset their overlay depths
+        for(int i=0;i < GetPlatformAdData().bannerFloorData.Length;i++)
+            if(i != bannerRefId && (bannerIsVisible[i] || bannerWantedVisible[i]))
+                HideBannerAd(i, false);
 
         activeBannerRefId = bannerRefId;
-
-        activeBannerIsReady = bannerIsReady[activeBannerRefId];
-        activeBannerIsLoading = bannerIsLoading[activeBannerRefId];
-        activeBannerIsVisible = bannerIsVisible[activeBannerRefId];
-        activeBannerWantedVisible = bannerWantedVisible[activeBannerRefId];
-    }
-
-    public void ShowBannerAd(int bannerRefId, bool forceShow = false) {
-        SetActiveBannerRefId(bannerRefId);
-        ShowBannerAd(forceShow);
     }
 
     /// <summary>
     /// Shows a banner advert if one is loaded in memory.
     /// </summary>
-    public void ShowBannerAd(bool forceShow = false) {
+    public void ShowBannerAd(int bannerRefId, bool forceShow = false) {
         if (!enableAdMob || hasPurchasedAdRemoval)
             return;
 
         if (debugLogging)
             Debug.Log("AdMob Debug - ShowBannerAd(" + forceShow + ")");
 
+        SetActiveBannerRefId(bannerRefId);
+        
         // Check if we're calling ShowBanner because we're returning from an overlay screen which hid the banner
         if (bannerOverlayDepth > 0 && !forceShow) {
             if (debugLogging)
@@ -1548,13 +1367,11 @@ public class AdMob_Manager : MonoBehaviour {
 
             // There isn't any more overlaying menus open, return to the previous banner ad state
             bannerWantedVisible[activeBannerRefId] = bannerPrevState;
-            activeBannerWantedVisible = bannerPrevState;
 
             if (debugLogging)
                 Debug.Log("AdMob Debug - Banner wanted set to prev state: " + bannerPrevState);
         } else {
             bannerWantedVisible[activeBannerRefId] = true;
-            activeBannerWantedVisible = true;
             bannerOverlayDepth = 0;
         }
 
@@ -1564,10 +1381,10 @@ public class AdMob_Manager : MonoBehaviour {
         // Check if we can perform the action for the current method
         if (!bannerIsVisible[activeBannerRefId]) {
             if (bannerIsReady[activeBannerRefId]) {
+                
                 // Show the banner
-                // Ensure the admob request is sent on the main thread, otherwise it may caused unexpected behaviour on iOS
                 if (isAdMobInitialized)
-                    UnityMainThreadDispatcher.instance.Enqueue(() => InternalShowBanner(activeBannerRefId));
+                    InternalShowBanner(activeBannerRefId);
             } else {
                 if (!bannerIsLoading[activeBannerRefId]) {
                     LoadBannerAd(true, true, activeBannerRefId);
@@ -1582,7 +1399,13 @@ public class AdMob_Manager : MonoBehaviour {
 
     private void InternalShowBanner(int bannerRefId) {
         if (adMobBanner.Length > bannerRefId && adMobBanner[bannerRefId] != null) {
-            adMobBanner[bannerRefId].Show();
+            if (bannerWantedVisible[bannerRefId]) {
+                // Ensure the admob request is sent on the main thread, otherwise it may caused unexpected behaviour on iOS
+                UnityMainThreadDispatcher.instance.Enqueue(() => adMobBanner[bannerRefId].Show());
+
+                if (!bannerIsVisible[bannerRefId])
+                    BannerAdVisible(bannerRefId);
+            }
         }
     }
 
@@ -1614,20 +1437,21 @@ public class AdMob_Manager : MonoBehaviour {
                 if (adMobBanner[i] != null) {
                     int bannerId = i;
                     // Hide the banner advert from view (This does not unload it from memory)
-                    // Ensure the admob request is sent on the main thread, otherwise it may caused unexpected behaviour on iOS
                     if (isAdMobInitialized)
-                        UnityMainThreadDispatcher.instance.Enqueue(() => InternalHideBanner(bannerId));
+                        InternalHideBanner(bannerId);
                 }
             }
         }
-
-        activeBannerWantedVisible = false;
-        activeBannerIsVisible = false;
     }
 
     private void InternalHideBanner(int bannerRefId) {
-        if (adMobBanner.Length > bannerRefId && adMobBanner[bannerRefId] != null)
-            adMobBanner[bannerRefId].Hide();
+        if (adMobBanner.Length > bannerRefId && adMobBanner[bannerRefId] != null) {
+            // Ensure the admob request is sent on the main thread, otherwise it may caused unexpected behaviour on iOS
+            UnityMainThreadDispatcher.instance.Enqueue(() => adMobBanner[bannerRefId].Hide());
+
+            if(bannerIsVisible[bannerRefId])
+                BannerAdHidden(bannerRefId);
+        }
     }
 
     public void HideBannerAd(int bannerRefId, bool isOverlay) {
@@ -1649,16 +1473,10 @@ public class AdMob_Manager : MonoBehaviour {
         bannerWantedVisible[bannerRefId] = false;
         bannerIsVisible[bannerRefId] = false;
 
-        if (bannerRefId == activeBannerRefId) {
-            activeBannerWantedVisible = false;
-            activeBannerIsVisible = false;
-        }
-
         if (adMobBanner[bannerRefId] != null) {
             // Hide the banner advert from view (This does not unload it from memory)
-            // Ensure the admob request is sent on the main thread, otherwise it may caused unexpected behaviour on iOS
             if (isAdMobInitialized)
-                UnityMainThreadDispatcher.instance.Enqueue(() => InternalHideBanner(bannerRefId));
+                InternalHideBanner(bannerRefId);
         }
     }
 
@@ -1679,30 +1497,13 @@ public class AdMob_Manager : MonoBehaviour {
             bannerIsLoading[activeBannerRefId] = false;
             bannerIsReady[activeBannerRefId] = false;
             bannerIsVisible[activeBannerRefId] = false;
-
-            activeBannerWantedVisible = false;
-            activeBannerIsLoading = false;
-            activeBannerIsReady = false;
-            activeBannerIsVisible = false;
-
-            //bannerInMemorySizeSet[activeBannerRefId] = false;
-            //bannerInMemorySize[activeBannerRefId] = default(AdSize);
-
-            //bannerInMemoryPositionSet[activeBannerRefId] = false;
-            //bannerInMemoryPosition[activeBannerRefId] = default(AdPosition);
         }
 
         // Changed to only destroy if forceDestroy variable is true - No need to destroy the banner fully, it causes a bug where if another ad is loaded this frame it'll get destroyed instantly..
         if (adMobBanner[activeBannerRefId] != null) {
             if (forceDestroy) {
-                adMobBanner[activeBannerRefId].OnAdClosed -= bannerOnAdClosedCallback[activeBannerRefId];
-                adMobBanner[activeBannerRefId].OnAdLoaded -= bannerOnAdLoadedCallback[activeBannerRefId];
-                adMobBanner[activeBannerRefId].OnAdOpening -= bannerOnAdOpeningCallback[activeBannerRefId];
-                adMobBanner[activeBannerRefId].OnAdFailedToLoad -= bannerOnAdFailedToLoadCallback[activeBannerRefId];
-
-                // Ensure the admob request is sent on the main thread, otherwise it may caused unexpected behaviour on iOS
                 if (isAdMobInitialized)
-                    UnityMainThreadDispatcher.instance.Enqueue(() => InternalDestroyBanner(activeBannerRefId));
+                    InternalDestroyBanner(activeBannerRefId);
             } else {
                 HideBannerAd(false);
             }
@@ -1710,8 +1511,15 @@ public class AdMob_Manager : MonoBehaviour {
     }
 
     private void InternalDestroyBanner(int bannerRefId) {
-        if (adMobBanner.Length > bannerRefId && adMobBanner[bannerRefId] != null)
-            adMobBanner[bannerRefId].Destroy();
+        if (adMobBanner.Length > bannerRefId && adMobBanner[bannerRefId] != null) {
+            // Ensure the admob request is sent on the main thread, otherwise it may caused unexpected behaviour on iOS
+#if !UNITY_EDITOR
+            UnityMainThreadDispatcher.instance.Enqueue(() => adMobBanner[bannerRefId].Destroy());
+#else
+            // The editor doesn't handle destroying ads correctly and it causes ads to get duplicated..
+            UnityMainThreadDispatcher.instance.Enqueue(() => adMobBanner[bannerRefId].Hide());
+#endif
+        }
     }
 
     /// <summary>
@@ -1721,7 +1529,7 @@ public class AdMob_Manager : MonoBehaviour {
 #if !UNITY_EDITOR
             if (!pointScaleFactorSet)
             {
-                BannerView banner = new BannerView(GetPlatformAdData().bannerId[0], AdSize.Banner, AdPosition.TopLeft);
+                BannerView banner = new BannerView(GetPlatformAdData().bannerFloorData[0].floorId[0], AdSize.Banner, AdPosition.TopLeft);
 
                 cachedPointScaleFactor = AdSize.Banner.Width / banner.GetWidthInPixels();
                 pointScaleFactorSet = true;
@@ -1732,20 +1540,15 @@ public class AdMob_Manager : MonoBehaviour {
 
         return cachedPointScaleFactor;
     }
-
-    [Obsolete("Call OpenAdInspector() instead. The mediation test suite is depreciated and no longer used.")]
-    public void ShowMediationTestSuite() {
-        OpenAdInspector();
-    }
     
     public void OpenAdInspector() {
         if (!isAdMobInitialized)
             return;
-        
+
         if (PlayerPrefs.GetInt("admob_test_mode", 0) == 0) {
             PlayerPrefs.SetInt("admob_test_mode", 1);
             
-			JarLoader.DisplayToastMessage("Test mode enabled, restart app to use ad inspector");
+            MessagePopupManager.Instance.ShowMessage("AdMob Test Mode Enabled", "You must now restart the app to get test ads and use the ad inspector!", Application.Quit, "Close app");
         } else {
             // Enable test mode and keep it enabled just incase we want to continue debugging with test logging
             enableTestMode = true;
@@ -1763,7 +1566,7 @@ public class AdMob_Manager : MonoBehaviour {
                 
                 Debug.LogError("Failed to open ad inspector! (" + errorMsg + ")");
                 
-                JarLoader.DisplayToastMessage("Failed to open ad inspector!");
+                MessagePopupManager.Instance.ShowMessage("Failed to open Ad Inspector!", errorMsg);
             } else {
                 Debug.Log("Ad inspector opened successfully!");
             }
@@ -1889,7 +1692,7 @@ public class AdMob_Manager : MonoBehaviour {
     }
 
     // Rewarded Interstitial Ad Callbacks
-    private void RewardedInterstitialAdVisible(object sender, EventArgs args, int rewardedIntRefId) {
+    private void RewardedInterstitialAdVisible(int rewardedIntRefId) {
         if (!isAdMobInitialized)
             return;
         
@@ -1902,7 +1705,7 @@ public class AdMob_Manager : MonoBehaviour {
     }
 
     // Reward Ad Callbacks
-    private void RewardedInterstitialAdClosed(object sender, EventArgs args, int rewardedIntRefId) {
+    private void RewardedInterstitialAdClosed(int rewardedIntRefId) {
         if (!isAdMobInitialized)
             return;
         
@@ -1926,6 +1729,7 @@ public class AdMob_Manager : MonoBehaviour {
         LoadRewardedInterstitialAd(false, rewardedIntRefId, true);
     }
 
+    // AdMob callback - !! not guaranteed to be called on main thread !!
     private void RewardedInterstitialAdFailedToShow(object sender, AdErrorEventArgs loadFailArgs, int rewardedIntRefId) {
         if (!isAdMobInitialized)
             return;
@@ -1947,11 +1751,10 @@ public class AdMob_Manager : MonoBehaviour {
         UnityMainThreadDispatcher.instance.Enqueue(() => AttemptRewardedInterstitialAdRetry(rewardedIntRefId));
     }
 
-    private void RewardedInterstitialAdFailedToLoad(object sender, AdFailedToLoadEventArgs loadFailArgs, int rewardedIntRefId) {
+    // AdMob callback - !! not guaranteed to be called on main thread !!
+    private void RewardedInterstitialAdFailedToLoad(LoadAdError loadAdError, int rewardedIntRefId) {
         if (!isAdMobInitialized)
             return;
-        
-        LoadAdError loadAdError = loadFailArgs.LoadAdError;
 
         if (debugLogging) {
             Debug.LogError("AdMob Debug - Failed to load reward ad! " + loadAdError.GetMessage());
@@ -1962,7 +1765,7 @@ public class AdMob_Manager : MonoBehaviour {
         rewardIsReady[rewardedIntRefId] = false;
         rewardIsLoading[rewardedIntRefId] = false;
 
-        UnityMainThreadDispatcher.instance.Enqueue(() => OnRewardedInterstitialAdFailedToLoad?.Invoke(loadFailArgs));
+        UnityMainThreadDispatcher.instance.Enqueue(() => OnRewardedInterstitialAdFailedToLoad?.Invoke(loadAdError));
 
         FirebaseAnalyticsManager.LogEvent("reward_ad_load_failed", "error", loadAdError.GetCode());
 
@@ -1976,6 +1779,7 @@ public class AdMob_Manager : MonoBehaviour {
             StartCoroutine(RetryRewardedInterstitialAdLoad(rewardedIntRefId));
     }
     
+    // AdMob callback - !! not guaranteed to be called on main thread !!
     private void RewardedInterstitialAdRewarded(Reward reward, int rewardedIntRefId) {
         if (!isAdMobInitialized)
             return;
@@ -1986,7 +1790,8 @@ public class AdMob_Manager : MonoBehaviour {
         UnityMainThreadDispatcher.instance.Enqueue(() => OnRewardedInterstitialAdRewarded?.Invoke(reward));
     }
     
-    private void RewardedInterstitialAdLoaded(RewardedInterstitialAd ad, int rewardedIntRefId) {
+    // AdMob callback - !! not guaranteed to be called on main thread !!
+    private void RewardedInterstitialAdLoaded(int rewardedIntRefId) {
         if (!isAdMobInitialized)
             return;
         
@@ -2009,8 +1814,8 @@ public class AdMob_Manager : MonoBehaviour {
             ShowRewardedInterstitialAd(rewardedIntRefId);
     }
 
-    // Reward Ad Callbacks
-    private void RewardAdClosed(object sender, EventArgs args, int rewardRefId) {
+    // AdMob callback - !! not guaranteed to be called on main thread !!
+    private void RewardAdClosed(int rewardRefId) {
         if (!isAdMobInitialized)
             return;
         
@@ -2036,7 +1841,8 @@ public class AdMob_Manager : MonoBehaviour {
         LoadRewardAd(false, rewardRefId, true);
     }
 
-    private void RewardAdLoaded(object sender, EventArgs args, int rewardRefId) {
+    // AdMob callback - !! not guaranteed to be called on main thread !!
+    private void RewardAdLoaded(int rewardRefId) {
         if (!isAdMobInitialized)
             return;
         
@@ -2059,7 +1865,9 @@ public class AdMob_Manager : MonoBehaviour {
             ShowRewardAd(rewardRefId);
     }
 
-    private void RewardAdVisible(object sender, EventArgs args, int rewardRefId) {
+    
+    // AdMob callback - !! not guaranteed to be called on main thread !!
+    private void RewardAdVisible(int rewardRefId) {
         if (!isAdMobInitialized)
             return;
         
@@ -2071,7 +1879,7 @@ public class AdMob_Manager : MonoBehaviour {
         UnityMainThreadDispatcher.instance.Enqueue(() => OnRewardAdShown?.Invoke());
     }
 
-    private void RewardAdRewarded(object sender, Reward reward, int rewardRefId) {
+    private void RewardAdRewarded(Reward reward, int rewardRefId) {
         if (!isAdMobInitialized)
             return;
         
@@ -2081,32 +1889,25 @@ public class AdMob_Manager : MonoBehaviour {
         UnityMainThreadDispatcher.instance.Enqueue(() => OnRewardAdRewarded?.Invoke(reward));
     }
 
-    private void RewardAdFailedToShow(object sender, AdErrorEventArgs loadFailArgs, int rewardRefId) {
+    // AdMob callback - !! not guaranteed to be called on main thread !!
+    private void RewardAdFailedToShow(int rewardRefId) {
         if (!isAdMobInitialized)
             return;
-        
-        AdError adError = loadFailArgs.AdError;
 
-        if (debugLogging) {
-            Debug.LogError("AdMob Debug - Failed to show reward ad! " + adError.GetMessage());
-            Debug.LogError("AdMob Debug - Error: " + adError.ToString());
-        }
+        if (debugLogging)
+            Debug.LogError("AdMob Debug - Failed to show reward ad! Ref ID: " + rewardRefId);
 
         rewardIsReady[rewardRefId] = false;
         rewardIsLoading[rewardRefId] = false;
 
-        UnityMainThreadDispatcher.instance.Enqueue(() => OnRewardAdFailedToShow?.Invoke(loadFailArgs));
-
-        FirebaseAnalyticsManager.LogEvent("reward_ad_show_failed", "error", adError.GetCode());
-
+        UnityMainThreadDispatcher.instance.Enqueue(() => OnRewardAdFailedToShow?.Invoke());
         UnityMainThreadDispatcher.instance.Enqueue(() => AttemptRewardAdRetry(rewardRefId));
     }
 
-    private void RewardAdFailedToLoad(object sender, AdFailedToLoadEventArgs loadFailArgs, int rewardRefId) {
+    // AdMob callback - !! not guaranteed to be called on main thread !!
+    private void RewardAdFailedToLoad(LoadAdError loadAdError, int rewardRefId) {
         if (!isAdMobInitialized)
             return;
-        
-        LoadAdError loadAdError = loadFailArgs.LoadAdError;
 
         if (debugLogging && loadAdError != null) {
             Debug.LogError("AdMob Debug - Failed to load reward ad! " + loadAdError.GetMessage());
@@ -2121,7 +1922,7 @@ public class AdMob_Manager : MonoBehaviour {
         rewardIsReady[rewardRefId] = false;
         rewardIsLoading[rewardRefId] = false;
 
-        UnityMainThreadDispatcher.instance.Enqueue(() => OnRewardAdFailedToLoad?.Invoke(loadFailArgs));
+        UnityMainThreadDispatcher.instance.Enqueue(() => OnRewardAdFailedToLoad?.Invoke(loadAdError));
 
         FirebaseAnalyticsManager.LogEvent("reward_ad_load_failed", "error", loadAdError.GetCode());
 
@@ -2136,23 +1937,20 @@ public class AdMob_Manager : MonoBehaviour {
     }
 
     // Banner Ad Callbacks
-    private void BannerAdClosed(object sender, EventArgs args, int bannerRefId) {
+    private void BannerAdHidden(int bannerRefId) {
         if (!isAdMobInitialized)
             return;
         
         bannerIsVisible[bannerRefId] = false;
 
-        if (bannerRefId == activeBannerRefId) {
-            activeBannerIsVisible = false;
-        }
-
         UnityMainThreadDispatcher.instance.Enqueue(() => OnBannerAdClosed?.Invoke());
 
+        // If the banner ad was marked as wanted visible between hide call and now re-show it
         if (bannerWantedVisible[bannerRefId])
             ShowBannerAd(bannerRefId);
     }
 
-    private void BannerAdLoaded(object sender, EventArgs args, int bannerRefId) {
+    private void BannerAdLoaded(int bannerRefId) {
         if (!isAdMobInitialized)
             return;
         
@@ -2168,11 +1966,6 @@ public class AdMob_Manager : MonoBehaviour {
         bannerIsLoading[bannerRefId] = false;
         bannerFloorGroupAttemptedRetries[bannerRefId] = 0;
         bannerWantedFloorId = 0;
-
-        if (bannerRefId == activeBannerRefId) {
-            activeBannerIsReady = true;
-            activeBannerIsLoading = false;
-        }
         
         UnityMainThreadDispatcher.instance.Enqueue(() => OnBannerAdReady?.Invoke());
 
@@ -2183,18 +1976,14 @@ public class AdMob_Manager : MonoBehaviour {
         }
     }
 
-    private void BannerAdVisible(object sender, EventArgs args, int bannerRefId) {
+    private void BannerAdVisible(int bannerRefId) {
         if (!isAdMobInitialized)
             return;
         
         if (debugLogging)
-            Debug.Log("AdMob Debug - Banner ad visible");
+            Debug.Log("AdMob Debug - Banner ad visible " + bannerRefId);
 
         bannerIsVisible[bannerRefId] = true;
-
-        if (bannerRefId == activeBannerRefId) {
-            activeBannerIsVisible = true;
-        }
 
         UnityMainThreadDispatcher.instance.Enqueue(() => OnBannerAdShown?.Invoke());
 
@@ -2202,13 +1991,11 @@ public class AdMob_Manager : MonoBehaviour {
             HideBannerAd(bannerRefId, false);
     }
 
-    private void BannerAdFailedToLoad(object sender, AdFailedToLoadEventArgs loadFailArgs, int bannerRefId) {
+    private void BannerAdFailedToLoad(LoadAdError loadAdError, int bannerRefId) {
         // Skip the banner failed callback in the editor as we don't want to be spammed with messages if we've deleted the banner ad prefabs
         if (!isAdMobInitialized || Application.isEditor)
             return;
         
-        LoadAdError loadAdError = loadFailArgs.LoadAdError;
-
         if (debugLogging) {
             Debug.LogError("AdMob Debug - Failed to load banner ad! " + loadAdError.GetMessage());
             
@@ -2225,12 +2012,7 @@ public class AdMob_Manager : MonoBehaviour {
         bannerIsReady[bannerRefId] = false;
         bannerIsLoading[bannerRefId] = false;
 
-        if (bannerRefId == activeBannerRefId) {
-            activeBannerIsReady = false;
-            activeBannerIsLoading = false;
-        }
-
-        UnityMainThreadDispatcher.instance.Enqueue(() => OnBannerAdFailedToLoad?.Invoke(loadFailArgs));
+        UnityMainThreadDispatcher.instance.Enqueue(() => OnBannerAdFailedToLoad?.Invoke(loadAdError));
 
         FirebaseAnalyticsManager.LogEvent("banner_ad_load_failed", "error", loadAdError.GetCode());
 
@@ -2245,7 +2027,7 @@ public class AdMob_Manager : MonoBehaviour {
     }
 
     // Interstitial Ad Callbacks
-    private void InterstitialAdClosed(object sender, EventArgs args, int interstitialRefId) {
+    private void InterstitialAdClosed(int interstitialRefId) {
         if (!isAdMobInitialized)
             return;
         
@@ -2261,7 +2043,7 @@ public class AdMob_Manager : MonoBehaviour {
         LoadInterstitialAd(false, true, interstitialRefId);
     }
 
-    private void InterstitialAdLoaded(object sender, EventArgs args, int interstitialRefId) {
+    private void InterstitialAdLoaded(int interstitialRefId) {
         if (!isAdMobInitialized)
             return;
         
@@ -2284,7 +2066,7 @@ public class AdMob_Manager : MonoBehaviour {
             ShowInterstitialAd(true, interstitialRefId);
     }
 
-    private void InterstitialAdVisible(object sender, EventArgs args, int interstitialRefId) {
+    private void InterstitialAdVisible(int interstitialRefId) {
         if (!isAdMobInitialized)
             return;
         
@@ -2296,12 +2078,10 @@ public class AdMob_Manager : MonoBehaviour {
         UnityMainThreadDispatcher.instance.Enqueue(() => OnInterstitialAdShown?.Invoke());
     }
 
-    private void InterstitialAdFailedToLoad(object sender, AdFailedToLoadEventArgs loadFailArgs,  int interstitialRefId) {
+    private void InterstitialAdFailedToLoad(LoadAdError loadAdError,  int interstitialRefId) {
         if (!isAdMobInitialized)
             return;
         
-        LoadAdError loadAdError = loadFailArgs.LoadAdError;
-
         if (debugLogging && loadAdError != null) {
             Debug.LogError("AdMob Debug - Failed to load interstitial ad! " + loadAdError.GetMessage());
             Debug.LogError("AdMob Debug - Error: " + loadAdError);
@@ -2310,7 +2090,7 @@ public class AdMob_Manager : MonoBehaviour {
         intIsReady[interstitialRefId] = false;
         intIsLoading[interstitialRefId] = false;
 
-        UnityMainThreadDispatcher.instance.Enqueue(() => OnInterstitialAdFailedToLoad?.Invoke(loadFailArgs));
+        UnityMainThreadDispatcher.instance.Enqueue(() => OnInterstitialAdFailedToLoad?.Invoke(loadAdError));
 
         FirebaseAnalyticsManager.LogEvent("interstitial_ad_load_failed", "error", loadAdError.GetCode());
 

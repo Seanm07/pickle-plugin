@@ -129,39 +129,63 @@ public class FirebaseManager : MonoBehaviour
             FirebaseApp.LogLevel = LogLevel.Error;
         }
 
-        FirebaseApp.CheckAndFixDependenciesAsync().ContinueWith(task =>
-        {
-            DependencyStatus status = task.Result;
+        try {
+            FirebaseApp.CheckAndFixDependenciesAsync().ContinueWith(task => {
+		 
+                DependencyStatus status = task.Result;
 
-            switch (status)
-            {
-                case DependencyStatus.Available:
-                    app = FirebaseApp.DefaultInstance;
-                    
-                    // Set an initialised bool to true before invoking the initialised callback (just a simple variable to cheaply check if it's initialised)
-                    isInitialised = true;
+                switch (status) {
+			 
+                    case DependencyStatus.Available:
+                        // Trigger the callback for firebase init being done before doing anything with firebase (just in case errors prevent us continuing)
+                        CallbackInitDone();
 
-                    // Null propagated invoke on the firebase initialisation callback
-                    UnityMainThreadDispatcher.instance.Enqueue(() => OnFirebaseInitialised?.Invoke());
-                    
-                    // Get the instance id of the app (used for testing some firebase features)
-                    Firebase.Installations.FirebaseInstallations.DefaultInstance.GetIdAsync().ContinueWith(instanceTask => {
-                        #if !UNITY_EDITOR
-                            Debug.Log("Firebase initialised successfully! Instance id: " + instanceTask.Result);
-                        #endif
+                        // https://github.com/firebase/quickstart-unity/issues/1088
+                        // This was claimed to be fixed in 8.3.0 https://firebase.google.com/support/release-notes/unity?hl=en#version_830_-_september_21_2021 but it's not actually fixed
+                        app = FirebaseApp.DefaultInstance;
+                        
+                        // Set an initialised bool to true before invoking the initialised callback (just a simple variable to cheaply check if it's initialised)
+                        isInitialised = true;
+                        
+                        // Null propagated invoke on the firebase initialisation callback
+                        UnityMainThreadDispatcher.instance.Enqueue(() => OnFirebaseInitialised?.Invoke());
 
-                        UnityMainThreadDispatcher.instance.Enqueue(() => OnFirebaseInitialisationDone?.Invoke());
-                    });
-                    break;
-                
-                default:
-                    // Firebase isn't working correctly due to plugin errors, firebase will not be used
-                    Debug.LogError("Could not resolve all firebase dependencies: " + status);
-                    
-                    UnityMainThreadDispatcher.instance.Enqueue(() => OnFirebaseInitialisationDone?.Invoke());
-                    break;
-            }
-        });
+                        try {
+                            FirebaseInstallations firebaseInstance = FirebaseInstallations.DefaultInstance;
+
+                            if (firebaseInstance != null) {
+                                // Get the instance id of the app (used for testing some firebase features)
+                                firebaseInstance.GetIdAsync().ContinueWith(instanceTask => {
+                                    instanceId = instanceTask.Result;
+                                    Debug.Log("Firebase initialised successfully! Instance id: " + instanceId);
+                                });
+                            } else {
+                                Debug.LogError("Firebase installations instance was null! Failed to get instance id");
+                            }
+                        } catch (Exception e) {
+                            Debug.LogError("Failed to get instance id, your device may not support firebase - " + e.Message);
+                        }
+                        break;
+
+                    default:
+                        // Firebase isn't working correctly due to plugin errors, firebase will not be used
+                        Debug.LogError("Could not resolve all firebase dependencies: " + status);
+
+                        CallbackInitDone();
+                        break;
+                }
+            });
+        } catch (Exception e) {
+            Debug.LogError("Failed to initialise firebase - " + e.Message);
+            CallbackInitDone();
+        }
+    }
+
+    public void CallbackInitDone() {
+        if (!hasInitCallbackBeenRan) {
+            hasInitCallbackBeenRan = true;
+            UnityMainThreadDispatcher.instance.Enqueue(() => OnFirebaseInitialisationDone?.Invoke());
+        }
     }
     
     public string GetPathFriendlyIdentifier() {
@@ -187,6 +211,9 @@ public class FirebaseManager : MonoBehaviour
     }
 
     public static bool IsInitialised() {
+        if (instance == null)
+            return false;
+        
         return instance.isInitialised;
     }
     

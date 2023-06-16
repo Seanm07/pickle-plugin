@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Firebase;
+using Firebase.Installations;
 
 public class FirebaseManager : MonoBehaviour
 {
@@ -64,6 +65,8 @@ public class FirebaseManager : MonoBehaviour
     public static event Action OnFirebaseInitialisationDone;
 
     public bool isInitialised { get; private set; }
+    public string instanceId { get; private set; }
+    private bool hasInitCallbackBeenRan = false;
     
     private DateTime epochStart;
     

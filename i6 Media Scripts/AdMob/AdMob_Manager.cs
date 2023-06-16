@@ -290,7 +290,7 @@ public class AdMob_Manager : MonoBehaviour {
         for (int i = 0; i < totalIntSlots; i++) totalIntFloors[i] = platformAdData.interstitialFloorData[i].floorId.Length;
         for (int i = 0; i < totalBannerSlots; i++) totalBannerFloors[i] = platformAdData.bannerFloorData[i].floorId.Length;
         for (int i = 0; i < totalRewardSlots; i++) totalRewardFloors[i] = platformAdData.rewardFloorData[i].floorId.Length;
-        for (int i = 0; i < totalRewardSlots; i++) totalRewardedIntFloors[i] = platformAdData.rewardedInterstitialFloorData[i].floorId.Length;
+        for (int i = 0; i < totalRewardedIntSlots; i++) totalRewardedIntFloors[i] = platformAdData.rewardedInterstitialFloorData[i].floorId.Length;
         
         preloadBannerType = new BannerSizeType[totalBannerSlots];
         displayPreloadBannerImmediately = new bool[totalBannerSlots];

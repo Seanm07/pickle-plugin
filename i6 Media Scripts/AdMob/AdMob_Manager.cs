@@ -346,6 +346,8 @@ public class AdMob_Manager : MonoBehaviour {
             Debug.LogError("DPI checks failed! Falling back to default!");
             scrDPI = 160f;
         }
+		
+		InitializeAdMob();
     }
 
     public void InitializeAdMob() {

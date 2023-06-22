@@ -176,7 +176,9 @@ public class IABManager : MonoBehaviour {
     
     private void Awake() {
         instance = instance ?? this;
+    }
 
+    private void Start() {
         // Setup the specific IAB handler as we need to do things differently for UDP builds
         if (CrossPlatformManager.GetActiveStore() == AppStore.UDP) {
             iabHandler = GetComponent<IABHandlerUDP>() ?? gameObject.AddComponent<IABHandlerUDP>();
@@ -185,8 +187,12 @@ public class IABManager : MonoBehaviour {
             iabHandler = GetComponent<IABHandlerMain>() ?? gameObject.AddComponent<IABHandlerMain>();
             iabHandler.Init(this);
         }
-        
-        CrossPlatformManager.OnStoreInitializeSuccessful += OnStoreInitializeSuccessful;
+
+        if (CrossPlatformManager.instance.hasInitialized) {
+            OnStoreInitializeSuccessful();
+        } else {
+            CrossPlatformManager.OnStoreInitializeSuccessful += OnStoreInitializeSuccessful;
+        }
     }
 
     // Add a few frames of delay so we're not initializing alongside other scripts

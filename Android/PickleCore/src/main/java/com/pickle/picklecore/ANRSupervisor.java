@@ -91,7 +91,7 @@ class ANRSupervisorRunnable implements Runnable
         {
             try
             {
-                Thread.sleep(mCheckInterval * 1000);
+                Thread.sleep(mCheckInterval * 1000L);
 
                 // Create new callback
                 ANRSupervisorCallback callback = new ANRSupervisorCallback();
@@ -100,7 +100,7 @@ class ANRSupervisorRunnable implements Runnable
                 synchronized (callback)
                 {
                     this.mHandler.post(callback);
-                    callback.wait(mTimeoutCheck * 1000);
+                    callback.wait(mTimeoutCheck * 1000L);
 
                     // Check if called
                     if (!callback.isCalled())

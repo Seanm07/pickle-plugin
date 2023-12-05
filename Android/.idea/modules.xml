@@ -2,9 +2,15 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/PickleCore/PickleCore.iml" filepath="$PROJECT_DIR$/PickleCore/PickleCore.iml" group="Pickle Plugin/PickleCore" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/Pickle_Plugin.iml" filepath="$PROJECT_DIR$/.idea/modules/Pickle_Plugin.iml" group="Pickle_Plugin" />
-      <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" group="Pickle Plugin/app" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/Pickle_Plugin.iml" filepath="$PROJECT_DIR$/.idea/modules/Pickle_Plugin.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/PickleCore/Pickle_Plugin.PickleCore.iml" filepath="$PROJECT_DIR$/.idea/modules/PickleCore/Pickle_Plugin.PickleCore.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/PickleCore/Pickle_Plugin.PickleCore.androidTest.iml" filepath="$PROJECT_DIR$/.idea/modules/PickleCore/Pickle_Plugin.PickleCore.androidTest.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/PickleCore/Pickle_Plugin.PickleCore.main.iml" filepath="$PROJECT_DIR$/.idea/modules/PickleCore/Pickle_Plugin.PickleCore.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/PickleCore/Pickle_Plugin.PickleCore.unitTest.iml" filepath="$PROJECT_DIR$/.idea/modules/PickleCore/Pickle_Plugin.PickleCore.unitTest.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/Pickle_Plugin.app.iml" filepath="$PROJECT_DIR$/.idea/modules/app/Pickle_Plugin.app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/Pickle_Plugin.app.androidTest.iml" filepath="$PROJECT_DIR$/.idea/modules/app/Pickle_Plugin.app.androidTest.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/Pickle_Plugin.app.main.iml" filepath="$PROJECT_DIR$/.idea/modules/app/Pickle_Plugin.app.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/Pickle_Plugin.app.unitTest.iml" filepath="$PROJECT_DIR$/.idea/modules/app/Pickle_Plugin.app.unitTest.iml" />
     </modules>
   </component>
 </project>

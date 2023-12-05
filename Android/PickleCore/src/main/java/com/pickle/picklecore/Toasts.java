@@ -63,20 +63,22 @@ public class Toasts {
             Log.e("PicklePKG", "Toasts.Hide() failed to getMainLooper() - " + e);
         }
 
-        // Post a message to the mainLoop requesting the active toast to be cancelled
-        mainLooper.post(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            // Force cancel the current active toast message
-                            activeToast.cancel();
-                        } catch (Exception e) {
-                            Log.e("PicklePKG", "Toasts.Hide(..) failed to cancel active toast! - " + e);
+        if(mainLooper != null) {
+            // Post a message to the mainLoop requesting the active toast to be cancelled
+            mainLooper.post(
+                    new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                // Force cancel the current active toast message
+                                activeToast.cancel();
+                            } catch (Exception e) {
+                                Log.e("PicklePKG", "Toasts.Hide(..) failed to cancel active toast! - " + e);
+                            }
                         }
                     }
-                }
-        );
+            );
+        }
 
         activeToast = null;
     }

@@ -1,6 +1,7 @@
 package com.pickle.picklecore;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlarmManager;
 import android.app.NotificationChannel;
@@ -19,6 +20,7 @@ import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
+import androidx.core.content.ContextCompat;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -167,12 +169,18 @@ public class LocalNotifications extends BroadcastReceiver {
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 // Notification channels & groups are only supported in API 26+
-                NotificationChannel channel = new NotificationChannel(id, name, GetNeededImportanceLevel(GetChannelDataById(id)));
-                channel.setDescription(description);
-                channel.setGroup(groupId);
+                ChannelData channelData = GetChannelDataById(id);
 
-                NotificationManager notificationManager = ctx.getSystemService(NotificationManager.class);
-                notificationManager.createNotificationChannel(channel);
+                if(channelData != null) {
+                    NotificationChannel channel = new NotificationChannel(id, name, GetNeededImportanceLevel(channelData));
+                    channel.setDescription(description);
+                    channel.setGroup(groupId);
+
+                    NotificationManager notificationManager = ctx.getSystemService(NotificationManager.class);
+                    notificationManager.createNotificationChannel(channel);
+                } else {
+                    Log.e("PicklePKG", "Failed to create notification channel! Channel data was null after creation!");
+                }
             }
         } else {
             Log.e("PicklePKG", "Failed to create notification channel! Notification group with id " + groupId + " does not exist!");
@@ -211,8 +219,7 @@ public class LocalNotifications extends BroadcastReceiver {
     public static void DeleteNotificationChannelGroup(Context ctx, String id) {
         if(ctx == null) return;
 
-        if (channelGroups.containsKey(id))
-            channelGroups.remove(id);
+        channelGroups.remove(id);
 
         // Allow deleting of channel groups even if they're not found in the channelGroups hash map as it won't cause any problems if not found
         // And maybe the app wants to delete groups created from previous sessions?
@@ -229,8 +236,7 @@ public class LocalNotifications extends BroadcastReceiver {
         for (int groupInt = 0; groupInt < channelGroups.size(); groupInt++) {
             ChannelGroupData channelGroup = channelGroups.get(groupInt);
 
-            if (channelGroup.channelData.containsKey(id))
-                channelGroup.channelData.remove(id);
+            channelGroup.channelData.remove(id);
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -263,8 +269,9 @@ public class LocalNotifications extends BroadcastReceiver {
         SendNotification(ctx, activity, notificationId, channelId, msgTitle, msgBody, sendAfterSeconds, "notification_icon", "", true);
     }
 
+    @SuppressLint("MissingPermission")
     public static void SendNotification(Context ctx, Activity activity, int notificationId, String channelId, String msgTitle, String msgBody, int sendAfterSeconds, String smallIconName, String largeIconName, boolean removeWhenTapped) {
-        if(ctx == null || activity == null || activity.isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && activity.isDestroyed())) return;
+        if(ctx == null || activity == null || activity.isFinishing() || activity.isDestroyed()) return;
 
         ChannelData channelData = GetChannelDataById(channelId);
 
@@ -275,16 +282,6 @@ public class LocalNotifications extends BroadcastReceiver {
 
         if (smallIconName.isEmpty()) {
             Log.e("PicklePKG", "Could not send notification! Small icon name not set, this would result in a crash when delivering the notification!");
-            return;
-        }
-
-        if (ctx == null) {
-            Log.e("PicklePKG", "Failed to show notification! ctx was null!");
-            return;
-        }
-
-        if (activity == null) {
-            Log.e("PicklePKG", "Failed to show notification! activity was null!");
             return;
         }
 
@@ -339,22 +336,20 @@ public class LocalNotifications extends BroadcastReceiver {
             }
 
             // Android 12+ requires android.permission.SCHEDULE_EXACT_ALARM to use setExact and policy says it must only be used for user scheduled events
-            if(ctxPackageManager.checkPermission(Manifest.permission.REQUEST_DELETE_PACKAGES, packageName) == PackageManager.PERMISSION_GRANTED){
+            if(ctxPackageManager.checkPermission(Manifest.permission.SCHEDULE_EXACT_ALARM, packageName) == PackageManager.PERMISSION_GRANTED){
                 // The app has SCHEDULE_EXACT_ALARM permission, use setExact
-                alarmManager.setExact(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + (sendAfterSeconds * 1000), alarmIntent);
+                alarmManager.setExact(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + (sendAfterSeconds * 1000L), alarmIntent);
             } else {
                 // Fallback to inexact scheduling, the system can delay this until the device wakes up for other actions or can re-order notifications to save battery
-                alarmManager.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + (sendAfterSeconds * 1000), alarmIntent);
+                alarmManager.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + (sendAfterSeconds * 1000L), alarmIntent);
             }
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            alarmManager.setExact(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + (sendAfterSeconds * 1000), alarmIntent);
         } else {
-            alarmManager.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + (sendAfterSeconds * 1000), alarmIntent);
+            alarmManager.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + (sendAfterSeconds * 1000L), alarmIntent);
         }
     }
 
     public static void CancelNotification(Context ctx, Activity activity, int notificationId) {
-        if(ctx == null || activity == null || activity.isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && activity.isDestroyed())){
+        if(ctx == null || activity == null || activity.isFinishing() || activity.isDestroyed()){
             Log.e("PicklePKG", "Failed to cancel notification! Invalid context or activity!");
             return;
         }
@@ -407,7 +402,13 @@ public class LocalNotifications extends BroadcastReceiver {
                 if(!intentExtrasString.isEmpty())
                     intentExtrasString += "|";
 
-                String value = bundle.get(key) != null ? bundle.get(key).toString() : "";
+                String value = "";
+
+                if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
+                    value = bundle.getString(key);
+                } else {
+                    value = bundle.get(key) != null ? bundle.get(key).toString() : "";
+                }
 
                 // Split the key and value by a colon (C# splits by first colon, value is ok to contain colons)
                 intentExtrasString += key + ":" + value;
@@ -419,6 +420,7 @@ public class LocalNotifications extends BroadcastReceiver {
 
     // Called by the alarm manager once it's time to send the notification
     // (Make sure an activity and receiver is setup in the android manifest!)
+    @SuppressLint("MissingPermission")
     @Override
     public void onReceive(Context ctx, Intent alarmIntent) {
         if (ctx == null) {
@@ -428,6 +430,12 @@ public class LocalNotifications extends BroadcastReceiver {
 
         if (alarmIntent == null) {
             Log.e("PicklePKG", "Failed to show notification! alarmIntent was null!");
+            return;
+        }
+
+        // As of API 33+ the POST_NOTIFICATIONS permission is required to send notifications
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            Log.e("PicklePKG", "Failed to show notification! App was not given POST_NOTIFICATIONS permission!");
             return;
         }
 
@@ -497,8 +505,7 @@ public class LocalNotifications extends BroadcastReceiver {
                         .setAutoCancel(removeWhenTapped)
                         .setPriority(priority);
 
-                if (Build.VERSION.SDK_INT >= 21)
-                    builder.setVisibility(VISIBILITY_PUBLIC);
+                builder.setVisibility(VISIBILITY_PUBLIC);
 
                 if (!largeIconName.isEmpty())
                     builder.setLargeIcon(BitmapFactory.decodeResource(res, res.getIdentifier(largeIconName, "drawable", ctx.getPackageName())));

@@ -1,13 +1,16 @@
 package com.pickle.picklecore;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.util.Log;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 public class AppInfo {
@@ -40,7 +43,11 @@ public class AppInfo {
         ApplicationInfo appInfo = null;
 
         try {
-            appInfo = ctxPackageManager.getApplicationInfo(packageName, 0);
+            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
+                appInfo = ctxPackageManager.getApplicationInfo(packageName, PackageManager.ApplicationInfoFlags.of(0L));
+            } else {
+                appInfo = ctxPackageManager.getApplicationInfo(packageName, 0);
+            }
         } catch (PackageManager.NameNotFoundException e) {
             Log.e("PicklePKG", "ApplicationInfo.GetInstallTimestamp(..) package name " + packageName + " not installed? - " + e);
             return 0L;
@@ -94,7 +101,11 @@ public class AppInfo {
         PackageInfo packageInfo = null;
 
         try {
-            packageInfo = ctxPackageManager.getPackageInfo(packageName, 0);
+            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
+                packageInfo = ctxPackageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0L));
+            } else {
+                packageInfo = ctxPackageManager.getPackageInfo(packageName, 0);
+            }
         } catch (PackageManager.NameNotFoundException e) {
             Log.e("PicklePKG", "ApplicationInfo.GetInitialInstallTimestamp(..) package name " + packageName + " not installed? - " + e);
             return 0L;
@@ -117,6 +128,7 @@ public class AppInfo {
         return installTimestamp;
     }
 
+    @SuppressLint("QueryPermissionsNeeded")
     public static String GetPackageList(Context ctx, final String searchString) {
         if(ctx == null) return "";
 
@@ -129,10 +141,17 @@ public class AppInfo {
         }
 
         // Get a list of installed applications on the device
-        List<ApplicationInfo> packageList = ctxPackageManager.getInstalledApplications(0);
+        List<ApplicationInfo> packageList = new ArrayList<>();
+
+        // getInstalledApplications will no longer return a list of installed apps from android 11+ without a dangerous system permission
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
+            packageList = ctxPackageManager.getInstalledApplications(PackageManager.ApplicationInfoFlags.of(0L));
+        } else {
+            packageList = ctxPackageManager.getInstalledApplications(0);
+        }
 
         if (packageList.isEmpty()) {
-            Log.e("PicklePKG", "ApplicationInfo.GetPackageList(..) packageList was empty!");
+            //Log.e("PicklePKG", "ApplicationInfo.GetPackageList(..) packageList was empty!");
             return "";
         }
 
@@ -163,7 +182,7 @@ public class AppInfo {
         return finalList.toString();
     }
 
-    // Check for red flag permissions usually added by APK modders to create hacked versions of the app
+    // Check for red flag permissions usually added by APK hackers to create hacked versions of the app
     public static boolean DoesAppContainBadPermissions(Context ctx)
     {
         if(ctx == null){
@@ -217,8 +236,6 @@ public class AppInfo {
         if(DoesAppContainBadPermissions(ctx)){
             return 58382;
         } else {
-            boolean doesActuallyContainBadPermissions = false;
-
             // Get app package name
             String packageName = GetSelfPackageName(ctx);
 

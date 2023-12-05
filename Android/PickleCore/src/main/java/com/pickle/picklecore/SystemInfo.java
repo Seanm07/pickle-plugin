@@ -1,5 +1,6 @@
 package com.pickle.picklecore;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -24,6 +25,10 @@ import android.view.WindowMetrics;
 import java.lang.reflect.Method;
 
 public class SystemInfo {
+
+    public static int GetAPILevel() {
+        return Build.VERSION.SDK_INT;
+    }
 
     public static long GetAvailableMemory() {
         Runtime activeRuntime = Runtime.getRuntime();
@@ -150,9 +155,12 @@ public class SystemInfo {
 
         // Huawei display cutout https://developer.huawei.com/consumer/cn/devservice/doc/50114
         try {
-            Class hwNotchSizeUtil = classLoader.loadClass("com.huawei.android.util.HwNotchSizeUtil");
-            Method hasNotchInScreen = hwNotchSizeUtil.getMethod("hasNotchInScreen");
-            return (boolean) hasNotchInScreen.invoke(hwNotchSizeUtil);
+            Class<?> hwNotchSizeUtil = classLoader.loadClass("com.huawei.android.util.HwNotchSizeUtil");
+            if(hwNotchSizeUtil != null) {
+                Method hasNotchInScreen = hwNotchSizeUtil.getMethod("hasNotchInScreen");
+                if(hasNotchInScreen != null)
+                    return (boolean) hasNotchInScreen.invoke(hwNotchSizeUtil);
+            }
         } catch(Exception e){}
 
         // Oppo display cutout https://open.oppomobile.com/wiki/doc#id=10159
@@ -161,10 +169,10 @@ public class SystemInfo {
 
         // Vivo display cutout https://dev.vivo.com.cn/documentCenter/doc/145
         try {
-            Class ftFeature = classLoader.loadClass("android.util.FtFeature");
+            @SuppressLint("PrivateApi") Class ftFeature = classLoader.loadClass("android.util.FtFeature");
             Method[] methods = ftFeature.getDeclaredMethods();
             for(Method method: methods){
-                if(method.getName().equalsIgnoreCase("isFeatureSupport")){
+                if(method != null && method.getName().equalsIgnoreCase("isFeatureSupport")){
                     return (boolean) method.invoke(ftFeature, 0x00000020); // 0x00000020 is the screen notch feature
                 }
             }
@@ -192,7 +200,7 @@ public class SystemInfo {
         if(ctx == null || activity == null) return 0;
 
         // API 30+ wants to use the new getDisplay method and windowMetrics for screen size
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R){
             WindowMetrics windowMetrics = activity.getWindowManager().getCurrentWindowMetrics();
 
             Rect scrBounds = windowMetrics.getBounds();
@@ -202,13 +210,7 @@ public class SystemInfo {
             Display display = activity.getWindowManager().getDefaultDisplay();
             DisplayMetrics displayMetrics = new DisplayMetrics();
 
-            if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
-                display.getRealMetrics(displayMetrics);
-            } else {
-                // Below API 17 we can only use getMetrics which doesn't include size of the nav bar in the screen size
-                // so if the device has an on screen nav bar we need to manually add the size of it onto the screen height
-                display.getMetrics(displayMetrics);
-            }
+            display.getRealMetrics(displayMetrics);
 
             return displayMetrics.widthPixels;
         }
@@ -218,7 +220,7 @@ public class SystemInfo {
         if(ctx == null || activity == null) return 0;
 
         // API 30+ wants to use the new getDisplay method and windowMetrics for screen size
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R){
             WindowMetrics windowMetrics = activity.getWindowManager().getCurrentWindowMetrics();
 
             Rect scrBounds = windowMetrics.getBounds();
@@ -228,13 +230,7 @@ public class SystemInfo {
             Display display = activity.getWindowManager().getDefaultDisplay();
             DisplayMetrics displayMetrics = new DisplayMetrics();
 
-            if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
-                display.getRealMetrics(displayMetrics);
-            } else {
-                // Below API 17 we can only use getMetrics which doesn't include size of the nav bar in the screen size
-                // so if the device has an on screen nav bar we need to manually add the size of it onto the screen height
-                display.getMetrics(displayMetrics);
-            }
+            display.getRealMetrics(displayMetrics);
 
             return displayMetrics.heightPixels;
         }
@@ -251,7 +247,7 @@ public class SystemInfo {
         int navSize = 0;
 
         // API 30+ wants to use the new getDisplay method and windowMetrics for screen size
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R){
             WindowMetrics windowMetrics = activity.getWindowManager().getCurrentWindowMetrics();
             display = activity.getDisplay();
 
@@ -271,44 +267,23 @@ public class SystemInfo {
         } else {
             display = activity.getWindowManager().getDefaultDisplay();
 
-            if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
-                display.getRealMetrics(displayMetrics);
-            } else {
-                // Below API 17 we can only use getMetrics which doesn't include size of the nav bar in the screen size
-                // so if the device has an on screen nav bar we need to manually add the size of it onto the screen height
-                display.getMetrics(displayMetrics);
-            }
+            display.getRealMetrics(displayMetrics);
 
             scrRotation = display.getRotation();
             scrHeight = displayMetrics.heightPixels;
             scrWidth = displayMetrics.widthPixels;
 
-            if (android.os.Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR1 || navbarSafeZone){
+            if (navbarSafeZone){
                 // We need to get the height of the navigation buttons and add them to screen size
-                // Below API 17 the screen size didn't include the navbar size so we need to manually add it
                 boolean hasPhysicalHomeKey = KeyCharacterMap.deviceHasKey(KeyEvent.KEYCODE_HOME);
 
                 // If we don't have a physical home button then we must have an on-screen nav bar
                 if (!hasPhysicalHomeKey) {
                     Resources resources = ctx.getResources();
-                    int navBarResId = resources.getIdentifier("navigation_bar_height", "dimen", "android");
+                    @SuppressLint("InternalInsetResource") int navBarResId = resources.getIdentifier("navigation_bar_height", "dimen", "android");
 
-                    if (navBarResId > 0) {
-                        navSize = resources.getDimensionPixelSize(navBarResId);
-
-                        if (android.os.Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR1) {
-                            if(scrRotation == Surface.ROTATION_0 || scrRotation == Surface.ROTATION_180){
-                                // Device is portrait, nav is affecting height
-                                scrHeight += navSize;
-                            } else {
-                                // Device is landscape, nav is affecting width
-                                scrWidth += navSize;
-                            }
-                        }
-
-                        if (!navbarSafeZone)
-                            navSize = 0;
-                    }
+                    if (navBarResId > 0)
+                        navSize = navbarSafeZone ? resources.getDimensionPixelSize(navBarResId) : 0;
                 }
             }
         }
@@ -324,7 +299,7 @@ public class SystemInfo {
                 int rightInset = cutout.getSafeInsetRight();
                 int bottomInset = cutout.getSafeInsetBottom();
 
-                return new int[] { leftInset, topInset, scrWidth - rightInset, scrHeight - (navSize >= bottomInset ? navSize : bottomInset) };
+                return new int[] { leftInset, topInset, scrWidth - rightInset, scrHeight - (Math.max(navSize, bottomInset)) };
             }
         }
 
@@ -332,13 +307,15 @@ public class SystemInfo {
 
         // Huawei display cutout https://developer.huawei.com/consumer/cn/devservice/doc/50114
         try {
-            Class hwNotchSizeUtil = classLoader.loadClass("com.huawei.android.util.HwNotchSizeUtil");
-            Method getNotchSize = hwNotchSizeUtil.getMethod("getNotchSize");
+            Class<?> hwNotchSizeUtil = classLoader.loadClass("com.huawei.android.util.HwNotchSizeUtil");
+            if(hwNotchSizeUtil != null) {
+                Method getNotchSize = hwNotchSizeUtil.getMethod("getNotchSize");
 
-            int[] size = (int[]) getNotchSize.invoke(hwNotchSizeUtil);
+                int[] size = (int[]) getNotchSize.invoke(hwNotchSizeUtil);
 
-            if(size.length >= 2 && size[1] > 0)
-                notchSize = size[1];
+                if (size.length >= 2 && size[1] > 0)
+                    notchSize = size[1];
+            }
         } catch(Exception e){}
 
         // Oppo display cutout https://open.oppomobile.com/wiki/doc#id=10159
@@ -361,10 +338,10 @@ public class SystemInfo {
 
         // Vivo display cutout https://dev.vivo.com.cn/documentCenter/doc/103
         try {
-            Class ftFeature = classLoader.loadClass("android.util.FtFeature");
+            @SuppressLint("PrivateApi") Class ftFeature = classLoader.loadClass("android.util.FtFeature");
             Method[] methods = ftFeature.getDeclaredMethods();
             for(Method method: methods){
-                if(method.getName().equalsIgnoreCase("isFeatureSupport")){
+                if(method != null && method.getName().equalsIgnoreCase("isFeatureSupport")){
                     if ((boolean) method.invoke(ftFeature, 0x00000020)){
                         // Vivo doesn't directly have any way of getting any info about the notch size..
                         // from their documentation though it seems to always be 32dp
@@ -397,7 +374,7 @@ public class SystemInfo {
             int resourceId = res.getIdentifier("config_mainBuiltInDisplayCutout", "string", "android");
             String spec = resourceId > 0 ? res.getString(resourceId) : null;
             if (spec != null && !TextUtils.isEmpty(spec)){
-                int statusBarResourceId = res.getIdentifier("status_bar_height", "dimen", "android");
+                @SuppressLint("InternalInsetResource") int statusBarResourceId = res.getIdentifier("status_bar_height", "dimen", "android");
 
                 if(statusBarResourceId > 0){
                     int samsungNotchPixelHeight = res.getDimensionPixelSize(statusBarResourceId);
@@ -421,7 +398,7 @@ public class SystemInfo {
                 case Surface.ROTATION_90: return new int[] { notchSize, 0, scrWidth - navSize, scrHeight };
 
                 // Upside down portrait (notch bottom / nav bottom) (this one is weird, I would have expected the nav to be top)
-                case Surface.ROTATION_180: return new int[] { 0, 0, scrWidth, scrHeight - (notchSize >= navSize ? notchSize : navSize) };
+                case Surface.ROTATION_180: return new int[] { 0, 0, scrWidth, scrHeight - (Math.max(notchSize, navSize)) };
 
                 // Landscape right (notch right / nav left)
                 case Surface.ROTATION_270: return new int[] { navSize, 0, scrWidth - notchSize, scrHeight };

@@ -1,11 +1,13 @@
 package com.pickle.picklecore;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
+import android.os.VibratorManager;
 import android.util.Log;
 import android.view.HapticFeedbackConstants;
 import android.view.View;
@@ -21,11 +23,12 @@ public class Vibration {
 
     // Java doesn't support parameter defaults so this override is required
     public static void DoHapticFeedback(Activity activity, Context ctx) {
-        DoHapticFeedback(activity, ctx, 1);
+        DoHapticFeedback(activity, ctx, HapticFeedbackConstants.CONFIRM, false);
     }
 
-    public static void DoHapticFeedback(Activity activity, Context ctx, int type) {
-        if(ctx == null || activity == null || activity.isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && activity.isDestroyed())) return;
+    @SuppressWarnings({"MissingPermission"})
+    public static void DoHapticFeedback(Activity activity, Context ctx, int strength, boolean ignoreDeviceHapticSetting) {
+        if(ctx == null || activity == null || activity.isFinishing() || activity.isDestroyed()) return;
 
         View rootView = null;
 
@@ -58,53 +61,88 @@ public class Vibration {
         if (!rootView.isHapticFeedbackEnabled())
             rootView.setHapticFeedbackEnabled(true);
 
-        rootView.performHapticFeedback(type);
+        int type = HapticFeedbackConstants.CLOCK_TICK;
+
+        switch(strength){
+            /*case 1: type = HapticFeedbackConstants.VIRTUAL_KEY; break;*/
+            case 2: type = HapticFeedbackConstants.KEYBOARD_TAP; break;
+            case 3: type = HapticFeedbackConstants.VIRTUAL_KEY; break;
+            case 4: type = HapticFeedbackConstants.LONG_PRESS; break;
+        }
+
+        if(ignoreDeviceHapticSetting) {
+            // Android API 33+ does not support the flag to ignore device haptic settings, if we already have the VIBRATE permission just use the vibrator for haptics
+            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.VIBRATE) == PackageManager.PERMISSION_GRANTED) {
+                    long vibrationMilliseconds = 1L;
+
+                    // Convert strength to millisecond durations
+                    switch (strength) {
+                        /*case 1: vibrationMilliseconds = 1L; break;*/
+                        case 2: vibrationMilliseconds = 20L; break;
+                        case 3: vibrationMilliseconds = 50L; break;
+                        case 4: vibrationMilliseconds = 100L; break;
+                    }
+
+                    DoVibrate(ctx, vibrationMilliseconds, 1);
+                } else {
+                    rootView.performHapticFeedback(type);
+                }
+            } else {
+                rootView.performHapticFeedback(type, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);
+            }
+        } else {
+            rootView.performHapticFeedback(type);
+        }
     }
 
-    public static void DoVibrate(Context ctx, long miliseconds) {
-        if (Build.VERSION.SDK_INT >= 26)
-            DoVibrate(ctx, miliseconds, VibrationEffect.DEFAULT_AMPLITUDE);
+    public static void DoVibrate(Context ctx, long milliseconds) {
+        DoVibrate(ctx, milliseconds, VibrationEffect.DEFAULT_AMPLITUDE);
     }
 
     // Strength is a range between 1 and 255 (use -1 or VibrationEffect.DEFAULT_AMPLITUDE to use device default)
-    // Supress warnings about the permission for vibration not being in the manifest because we have the section wrapped in a check for the vibrate permission anyway
+    // Suppress warnings about the permission for vibration not being in the manifest because we have the section wrapped in a check for the vibrate permission anyway
     @SuppressWarnings({"MissingPermission"})
-    public static void DoVibrate(Context ctx, long miliseconds, int strength) {
+    public static void DoVibrate(Context ctx, long milliseconds, int strength) {
         if(ctx == null) return;
 
-        if (Build.VERSION.SDK_INT >= 26) {
-            if (!isVibratorInitialised) {
-                if (ContextCompat.checkSelfPermission(ctx, android.Manifest.permission.VIBRATE) == PackageManager.PERMISSION_GRANTED) {
-                    vibrator = (Vibrator) ctx.getSystemService(Context.VIBRATOR_SERVICE);
-                    isVibratorDisabled = vibrator == null || !vibrator.hasVibrator();
-
-                    if (isVibratorDisabled)
-                        Log.i("PicklePKG", "Vibration.DoVibrate(..) Vibration not supported on this device");
+        if (!isVibratorInitialised) {
+            if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.VIBRATE) == PackageManager.PERMISSION_GRANTED) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    // SDK 31+ VIBRATOR_SERVICE is depreciated and the VIBRATOR_MANAGER_SERVICE should be used instead
+                    VibratorManager vibratorManager = (VibratorManager) ctx.getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
+                    vibrator = vibratorManager.getDefaultVibrator();
                 } else {
-                    Log.e("PicklePKG", "Vibration.DoVibrate(..) the app does not have VIBRATE permission!");
-                    isVibratorDisabled = true;
+                    vibrator = (Vibrator) ctx.getSystemService(Context.VIBRATOR_SERVICE);
                 }
 
-                isVibratorInitialised = true;
+                isVibratorDisabled = vibrator == null || !vibrator.hasVibrator();
+
+                if (isVibratorDisabled)
+                    Log.i("PicklePKG", "Vibration.DoVibrate(..) Vibration not supported on this device");
+            } else {
+                Log.e("PicklePKG", "Vibration.DoVibrate(..) the app does not have VIBRATE permission!");
+                isVibratorDisabled = true;
             }
 
-            if (!isVibratorDisabled) {
-                VibrationEffect effect = VibrationEffect.createOneShot(miliseconds, strength);
-                vibrator.vibrate(effect);
-            }
-        } else if (!isVibratorInitialised) {
-            Log.e("PicklePKG", "Vibration.DoVibrate(..) the app must target atleast SDK 26 to support VibrationEffect!");
             isVibratorInitialised = true;
-            isVibratorDisabled = true;
+        }
+
+        if (!isVibratorDisabled) {
+            // Android 26+ deprecated directly vibrating with milliseconds and added the VibrationEffect parameter for building the vibration properties
+            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                VibrationEffect effect = VibrationEffect.createOneShot(milliseconds, strength);
+                vibrator.vibrate(effect);
+            } else {
+                vibrator.vibrate(milliseconds);
+            }
         }
     }
 
-    // Supress warnings about the permission for vibration not being in the manifest because we have the section wrapped in a check for the vibrate permission anyway
+    // Suppress warnings about the permission for vibration not being in the manifest because we have the section wrapped in a check for the vibrate permission anyway
     @SuppressWarnings({"MissingPermission"})
     public static void StopVibrate() {
-        if (Build.VERSION.SDK_INT >= 26) {
-            if (isVibratorInitialised && !isVibratorDisabled)
-                vibrator.cancel();
-        }
+        if (isVibratorInitialised && !isVibratorDisabled)
+            vibrator.cancel();
     }
 }

@@ -5,6 +5,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.VibrationAttributes;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorManager;
@@ -97,7 +98,7 @@ public class Vibration {
     }
 
     public static void DoVibrate(Context ctx, long milliseconds) {
-        DoVibrate(ctx, milliseconds, VibrationEffect.DEFAULT_AMPLITUDE);
+        DoVibrate(ctx, milliseconds, -1);
     }
 
     // Strength is a range between 1 and 255 (use -1 or VibrationEffect.DEFAULT_AMPLITUDE to use device default)
@@ -105,6 +106,7 @@ public class Vibration {
     @SuppressWarnings({"MissingPermission"})
     public static void DoVibrate(Context ctx, long milliseconds, int strength) {
         if(ctx == null) return;
+        if(strength <= 0 || strength > 255) strength = -1;
 
         if (!isVibratorInitialised) {
             if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.VIBRATE) == PackageManager.PERMISSION_GRANTED) {
@@ -128,13 +130,27 @@ public class Vibration {
             isVibratorInitialised = true;
         }
 
+        // Make sure the vibrator isn't disabled
         if (!isVibratorDisabled) {
-            // Android 26+ deprecated directly vibrating with milliseconds and added the VibrationEffect parameter for building the vibration properties
-            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                VibrationEffect effect = VibrationEffect.createOneShot(milliseconds, strength);
-                vibrator.vibrate(effect);
+            // Crashlytics found some cases where vibrator became null later, if it's suddenly null we'll mark it to be reinitialised
+            if(vibrator != null) {
+                // Android 26+ deprecated directly vibrating with milliseconds and added the VibrationEffect parameter for building the vibration properties
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    VibrationEffect effect = VibrationEffect.createOneShot(milliseconds, strength);
+
+                    if (effect != null) {
+                        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
+                            vibrator.vibrate(effect, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_MEDIA));
+                        } else {
+                            vibrator.vibrate(effect);
+                        }
+                    }
+                } else {
+                    vibrator.vibrate(milliseconds);
+                }
             } else {
-                vibrator.vibrate(milliseconds);
+                // Re-initialise the vibrator next vibration usage
+                isVibratorInitialised = false;
             }
         }
     }

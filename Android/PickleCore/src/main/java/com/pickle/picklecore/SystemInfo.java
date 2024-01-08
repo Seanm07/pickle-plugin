@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.graphics.Insets;
+import android.graphics.Point;
 import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Build;
@@ -18,6 +19,7 @@ import android.view.Display;
 import android.view.DisplayCutout;
 import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
+import android.view.RoundedCorner;
 import android.view.Surface;
 import android.view.WindowInsets;
 import android.view.WindowMetrics;
@@ -289,17 +291,42 @@ public class SystemInfo {
         }
 
         // API 28+ has standardised notch support
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-            DisplayCutout cutout = activity.getWindow().getDecorView().getRootWindowInsets().getDisplayCutout();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            WindowInsets windowInsets = activity.getWindow().getDecorView().getRootWindowInsets();
 
-            if (cutout != null){
-                // This method kinda returns a safezone for us already so instead of setting notchSize just return the rect here
-                int leftInset = cutout.getSafeInsetLeft();
-                int topInset = cutout.getSafeInsetTop();
-                int rightInset = cutout.getSafeInsetRight();
-                int bottomInset = cutout.getSafeInsetBottom();
+            if(windowInsets != null) {
+                int topLeftRoundedOffset = 0;
+                int bottomRightRoundedOffset = 0;
 
-                return new int[] { leftInset, topInset, scrWidth - rightInset, scrHeight - (Math.max(navSize, bottomInset)) };
+                // API 31+ has API for rounded screen corners which a ton of modern phones now have
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    RoundedCorner topLeftRoundedCorner = windowInsets.getRoundedCorner(RoundedCorner.POSITION_TOP_LEFT);
+                    RoundedCorner bottomRightRoundedCorner = windowInsets.getRoundedCorner(RoundedCorner.POSITION_BOTTOM_RIGHT);
+
+                    if(topLeftRoundedCorner != null) topLeftRoundedOffset = topLeftRoundedCorner.getRadius() / 2;
+                    if(bottomRightRoundedCorner != null) bottomRightRoundedOffset = bottomRightRoundedCorner.getRadius() / 2;
+                }
+
+                DisplayCutout cutout = windowInsets.getDisplayCutout();
+
+                // cutout is null if the screen doesn't have a cutout notch
+                if (cutout != null) {
+                    // This method kinda returns a safezone for us already so instead of setting notchSize just return the rect here
+                    int leftInset = cutout.getSafeInsetLeft();
+                    int topInset = cutout.getSafeInsetTop();
+                    int rightInset = cutout.getSafeInsetRight();
+                    int bottomInset = cutout.getSafeInsetBottom();
+
+                    // AdMob only adds left/right margins for rounded corners so we'll do the same thing
+                    // If any insets are within rounded corner radius, increase the value to be on the radius edge
+                    if (leftInset < topLeftRoundedOffset) leftInset = topLeftRoundedOffset;
+                    if (rightInset < bottomRightRoundedOffset) rightInset = bottomRightRoundedOffset;
+
+                    return new int[]{leftInset, topInset, scrWidth - (leftInset + rightInset), scrHeight - (topInset + (Math.max(navSize, bottomInset)))};
+                } else if(topLeftRoundedOffset > 0 || bottomRightRoundedOffset > 0){
+                    // Screen doesn't have a notch cutout but it does have rounded corners
+                    return new int[]{topLeftRoundedOffset, 0, scrWidth - (topLeftRoundedOffset + bottomRightRoundedOffset), scrHeight - navSize};
+                }
             }
         }
 

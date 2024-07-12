@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.graphics.Insets;
 import android.graphics.Point;
@@ -453,5 +454,11 @@ public class SystemInfo {
 
         // Start an activity with the intent we built
         activity.startActivity(intent);
+    }
+
+    public static boolean IsAndroidTV(Context ctx) {
+        if(ctx == null) return false;
+
+        return ctx.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK);
     }
 }

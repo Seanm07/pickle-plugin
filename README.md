@@ -1,4 +1,4 @@
-# Pickle Plugin - Readme incomplete - Will finish in future
+# Pickle Plugin - Readme
 
 
 An example notification script from Helicopter Rescue - https://pastebin.com/PH3X9K7S
@@ -224,3 +224,149 @@ strength is between 1 and 255, see https://developer.android.com/reference/andro
 ```c#
 StopVibrate()
 ```
+
+# Firebase Analytics - PickleEventCategory Documentation
+
+The `PickleEventCategory` class contains a set of predefined event categories used for logging various events within an application.
+We had to switch to predefined event categories as the firebase analytics backend was getting too messy and most the time developers were logging incorrectly which was causing game analytics to be useless.
+
+## Internal Pickle Script Categories
+
+### PickleScripts
+
+#### APP_STORE
+- **Description**: Track the source store which the app was installed from.
+- **Code Reference**: `PickleEventCategory.PickleScripts.APP_STORE`
+- **Raw Category Name**: `app_store`
+
+#### ADMOB_TTL
+- **Description**: Tracking of how long different admob components take to initialize.
+- **Code Reference**: `PickleEventCategory.PickleScripts.ADMOB_TTL`
+- **Raw Category Name**: `admob_ttl`
+
+#### IAS_CLICK
+- **Description**: Ad impressions on our internal ad system.
+- **Code Reference**: `PickleEventCategory.PickleScripts.IAS_CLICK`
+- **Raw Category Name**: `ias_click`
+
+#### IAS_IMPRESSION
+- **Description**: Ad clicks on our internal ad system.
+- **Code Reference**: `PickleEventCategory.PickleScripts.IAS_IMPRESSION`
+- **Raw Category Name**: `ias_impression`
+
+#### IAP_PURCHASE_COMPLETE
+- **Description**: In-app purchases which were successfully and triggered the success callback.
+- **Code Reference**: `PickleEventCategory.PickleScripts.IAP_PURCHASE_COMPLETE`
+- **Raw Category Name**: `iap_purchase_complete`
+
+#### IAP_PURCHASE_ERROR
+- **Description**: In-app purchases which failed.
+- **Code Reference**: `PickleEventCategory.PickleScripts.IAP_PURCHASE_ERROR`
+- **Raw Category Name**: `iap_purchase_error`
+
+#### IAB_RESTORE_SUCCESS
+- **Description**: In-app purchase restore actions which were successful.
+- **Code Reference**: `PickleEventCategory.PickleScripts.IAB_RESTORE_SUCCESS`
+- **Raw Category Name**: `iab_restore_success`
+
+#### IAB_RESTORE_FAILED
+- **Description**: In-app purchase restore actions which failed.
+- **Code Reference**: `PickleEventCategory.PickleScripts.IAB_RESTORE_FAILED`
+- **Raw Category Name**: `iab_restore_failed`
+
+#### LOW_MEMORY_WARNING
+- **Description**: Track when the device reaches critically low memory.
+- **Code Reference**: `PickleEventCategory.PickleScripts.LOW_MEMORY_WARNING`
+- **Raw Category Name**: `low_memory_warning`
+
+#### PERSONALISATION_AUTH_FLOW
+- **Description**: Events logged relating to the personalisation and CMP flow.
+- **Code Reference**: `PickleEventCategory.PickleScripts.PERSONALISATION_AUTH_FLOW`
+- **Raw Category Name**: `personalisation_auth_flow`
+
+## General Event Categories
+
+#### MESSAGE_PROMPTS
+- **Description**: Popup messages or dialogs which inform or ask the player a question.
+- **Code Reference**: `PickleEventCategory.MESSAGE_PROMPTS`
+- **Raw Category Name**: `message_prompts`
+
+#### ITEM_PURCHASED
+- **Description**: Item purchased with in-game currency or other method.
+- **Code Reference**: `PickleEventCategory.ITEM_PURCHASED`
+- **Raw Category Name**: `item_purchased`
+
+#### ITEM_EQUIPPED
+- **Description**: Item equipped, e.g., weapons, vehicles, characters.
+- **Code Reference**: `PickleEventCategory.ITEM_EQUIPPED`
+- **Raw Category Name**: `item_equipped`
+
+#### ITEM_COLLECTED
+- **Description**: Item collected, such as hidden packages or collectibles.
+- **Code Reference**: `PickleEventCategory.ITEM_COLLECTED`
+- **Raw Category Name**: `item_collected`
+
+#### MODE_SELECTED
+- **Description**: Mode or map selected by the player.
+- **Code Reference**: `PickleEventCategory.MODE_SELECTED`
+- **Raw Category Name**: `mode_selected`
+
+#### MISSION_PROMPTED
+- **Description**: Mission prompted to player.
+- **Code Reference**: `PickleEventCategory.MISSION_PROMPTED`
+- **Raw Category Name**: `mission_prompted`
+
+#### MISSION_PROMPT_ACCEPTED
+- **Description**: Mission prompt accepted by player.
+- **Code Reference**: `PickleEventCategory.MISSION_PROMPT_ACCEPTED`
+- **Raw Category Name**: `mission_prompt_accepted`
+
+#### MISSION_PROMPT_DECLINED
+- **Description**: Mission prompt declined by player.
+- **Code Reference**: `PickleEventCategory.MISSION_PROMPT_DECLINED`
+- **Raw Category Name**: `mission_prompt_declined`
+
+#### MISSION_START
+- **Description**: Mission entered/started.
+- **Code Reference**: `PickleEventCategory.MISSION_START`
+- **Raw Category Name**: `mission_start`
+
+#### MISSION_COMPLETE
+- **Description**: Mission completed successfully.
+- **Code Reference**: `PickleEventCategory.MISSION_COMPLETE`
+- **Raw Category Name**: `mission_complete`
+
+#### MISSION_FAILED
+- **Description**: Mission failed.
+- **Code Reference**: `PickleEventCategory.MISSION_FAILED`
+- **Raw Category Name**: `mission_failed`
+
+#### MISSION_FAILED_REASON
+- **Description**: Reason for mission failure.
+- **Code Reference**: `PickleEventCategory.MISSION_FAILED_REASON`
+- **Raw Category Name**: `mission_failed_reason`
+
+#### BUTTON_IMPRESSION
+- **Description**: Tracking of impressions on buttons.
+- **Code Reference**: `PickleEventCategory.BUTTON_IMPRESSION`
+- **Raw Category Name**: `button_impression`
+
+#### BUTTON_CLICK
+- **Description**: Tracking of clicks on buttons.
+- **Code Reference**: `PickleEventCategory.BUTTON_CLICK`
+- **Raw Category Name**: `button_click`
+
+#### LEVEL_UP
+- **Description**: Player leveled up, track the current level when leveling up in games with XP.
+- **Code Reference**: `PickleEventCategory.LEVEL_UP`
+- **Raw Category Name**: `level_up`
+
+#### REFERRAL_SHARE
+- **Description**: Referral and app sharing events.
+- **Code Reference**: `PickleEventCategory.REFERRAL_SHARE`
+- **Raw Category Name**: `referral_share`
+
+#### REFUEL
+- **Description**: Events relating to the refuel flow.
+- **Code Reference**: `PickleEventCategory.REFUEL`
+- **Raw Category Name**: `refuel`

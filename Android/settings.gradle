@@ -1,2 +1,2 @@
-include ':app', ':PickleCore'
+include ':PickleCore'
 rootProject.name='Pickle Plugin'

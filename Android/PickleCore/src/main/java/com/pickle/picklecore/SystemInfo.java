@@ -2,12 +2,12 @@ package com.pickle.picklecore;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.graphics.Insets;
-import android.graphics.Point;
 import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Build;
@@ -420,16 +420,16 @@ public class SystemInfo {
             // Note: The rotation angle is relative to how the UI is rotated not how the phone is rotated so it's anti-clockwise
             switch (scrRotation) {
                 // Portrait (notch top / nav bottom)
-                case Surface.ROTATION_0: return new int[] { 0, notchSize, scrWidth, scrHeight - navSize };
+                case Surface.ROTATION_0: return new int[] { 0, notchSize, scrWidth, scrHeight - (navSize + notchSize) };
 
                 // Landscape left (notch left / nav right)
-                case Surface.ROTATION_90: return new int[] { notchSize, 0, scrWidth - navSize, scrHeight };
+                case Surface.ROTATION_90: return new int[] { notchSize, 0, scrWidth - (navSize + notchSize), scrHeight };
 
                 // Upside down portrait (notch bottom / nav bottom) (this one is weird, I would have expected the nav to be top)
                 case Surface.ROTATION_180: return new int[] { 0, 0, scrWidth, scrHeight - (Math.max(notchSize, navSize)) };
 
                 // Landscape right (notch right / nav left)
-                case Surface.ROTATION_270: return new int[] { navSize, 0, scrWidth - notchSize, scrHeight };
+                case Surface.ROTATION_270: return new int[] { navSize, 0, scrWidth - (navSize + notchSize), scrHeight };
             }
         }
 
@@ -452,8 +452,16 @@ public class SystemInfo {
         intent.setData(uri);
         intent.addCategory("android.intent.category.DEFAULT");
 
-        // Start an activity with the intent we built
-        activity.startActivity(intent);
+        try {
+            // Start an activity with the intent we built
+            activity.startActivity(intent);
+        } catch (ActivityNotFoundException e){
+            // Some android TV were throwing an ActivityNotFoundException when trying to open the settings app
+            // seems like some android TVs have this activity stripped or changed in some way
+            Log.e("PicklePKG", "SystemInfo.OpenSettingsApp(..) activity ACTION_APPLICATION_DETAILS_SETTINGS not available!");
+
+            Toasts.Show(ctx, "Application settings unavailable on this device!", 3);
+        }
     }
 
     public static boolean IsAndroidTV(Context ctx) {

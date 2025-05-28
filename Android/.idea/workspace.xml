@@ -12,7 +12,9 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="9ebb3717-ff7a-4c5e-9bf7-665fa56315f4" name="Default Changelist" comment="" />
+    <list default="true" id="9ebb3717-ff7a-4c5e-9bf7-665fa56315f4" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/../PicklePlugin.zip" beforeDir="false" afterPath="$PROJECT_DIR$/../PicklePlugin.zip" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -47,24 +49,6 @@
                 <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
                 <item name="Pickle Plugin" type="f1a62948:ProjectNode" />
                 <item name="Run Configurations" type="7b0102dc:RunConfigurationsNode" />
-              </path>
-              <path>
-                <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
-                <item name="Pickle Plugin" type="f1a62948:ProjectNode" />
-                <item name="app" type="2d1252cf:ModuleNode" />
-              </path>
-              <path>
-                <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
-                <item name="Pickle Plugin" type="f1a62948:ProjectNode" />
-                <item name="app" type="2d1252cf:ModuleNode" />
-                <item name="Tasks" type="e4a08cd1:TasksNode" />
-              </path>
-              <path>
-                <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
-                <item name="Pickle Plugin" type="f1a62948:ProjectNode" />
-                <item name="app" type="2d1252cf:ModuleNode" />
-                <item name="Tasks" type="e4a08cd1:TasksNode" />
-                <item name="other" type="c8890929:TasksNode$1" />
               </path>
               <path>
                 <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
@@ -122,11 +106,11 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "RunOnceActivity.cidr.known.project.marker": "true",
-    "ScreenRecorder.SavePath": "C:\\Users\\Sean\\Downloads\\device-2024-06-25-170609.mp4",
+    "ScreenRecorder.SavePath": "C:\\Users\\Sean\\Downloads\\device-2024-07-22-145941.mp4",
     "cidr.known.project.marker": "true",
     "com.google.services.firebase.aqiPopupShown": "true",
     "last_opened_file_path": "C:/Users/Sean/Downloads",
-    "memory.settings.postsync.last.time.stamp": "1720780786581",
+    "memory.settings.postsync.last.time.stamp": "1748441173912",
     "project.structure.last.edited": "Dependencies",
     "project.structure.proportion": "0.17",
     "project.structure.side.proportion": "0.2",

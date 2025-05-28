@@ -1,6 +1,7 @@
 package com.pickle.picklecore;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
@@ -11,6 +12,7 @@ import android.os.Vibrator;
 import android.os.VibratorManager;
 import android.util.Log;
 import android.view.HapticFeedbackConstants;
+import android.view.InputDevice;
 import android.view.View;
 import android.view.Window;
 
@@ -21,6 +23,58 @@ public class Vibration {
     public static Vibrator vibrator;
     public static boolean isVibratorDisabled;
     public static boolean isVibratorInitialised;
+
+    // Left motor: Low frequency (intense crashes/explosions)
+    // Right motor: High frequency (subtle taps and haptic effects)
+    @SuppressLint("MissingPermission")
+    public static void DoControllerVibrate(boolean lowFrequency, long milliseconds, int strength){
+        // API 31+ required for controller vibration as the vibration manager is required
+        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return;
+
+        if(strength < 0 || strength > 255) return;
+
+        for(int deviceId : InputDevice.getDeviceIds()) {
+            InputDevice inputDevice = InputDevice.getDevice(deviceId);
+
+            if (inputDevice == null) {
+                Log.e("PicklePKG", "Vibration.DoControllerVibrate(..) no input device found with deviceId: " + deviceId);
+                return;
+            }
+
+            VibratorManager vibratorManager = inputDevice.getVibratorManager();
+
+            if (vibratorManager == null) {
+                Log.e("PicklePKG", "Vibration.DoControllerVibrate(..) null vibratorManager on deviceId: " + deviceId);
+                return;
+            }
+
+            int[] vibratorIds = vibratorManager.getVibratorIds();
+            int vibratorCount = vibratorIds.length; // 0 on devices which don't support vibration
+            int targetVibratorIndex = lowFrequency ? 0 : 1;
+
+            // Game controllers typically have 2 vibration motors one for low frequency and one for high frequency
+            if (vibratorCount > 0) {
+                // If the controller doesn't have a highFrequency motor just use the lowFrequency motor at min strength
+                if(vibratorCount <= targetVibratorIndex){
+                    targetVibratorIndex = 0;
+                    strength = 1;
+                }
+
+                Vibrator vibrator = vibratorManager.getVibrator(vibratorIds[targetVibratorIndex]);
+
+                if (vibrator == null) {
+                    Log.e("PicklePKG", "Vibration.DoControllerVibrate(..) null vibrator index " + targetVibratorIndex + " on deviceId: " + deviceId);
+                    return;
+                }
+
+                if (strength <= 0 || milliseconds <= 0L) {
+                    vibrator.cancel();
+                } else {
+                    vibrator.vibrate(VibrationEffect.createOneShot(milliseconds, strength));
+                }
+            }
+        }
+    }
 
     // Java doesn't support parameter defaults so this override is required
     public static void DoHapticFeedback(Activity activity, Context ctx) {

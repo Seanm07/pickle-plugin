@@ -467,6 +467,7 @@ public class SystemInfo {
     public static boolean IsAndroidTV(Context ctx) {
         if(ctx == null) return false;
 
-        return ctx.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK);
+        return ctx.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK) ||
+                ctx.getPackageManager().hasSystemFeature(PackageManager.FEATURE_AUTOMOTIVE);
     }
 }

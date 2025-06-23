@@ -13,9 +13,6 @@ public class Toasts {
     public static void Show(final Context ctx, final String msg, final int duration) {
         if(ctx == null) return;
 
-        // Make sure any active toasts are force cancelled before showing a new one
-        Hide();
-
         Handler mainLooper = null;
 
         try {
@@ -32,10 +29,16 @@ public class Toasts {
                     @Override
                     public void run() {
                         try {
-                            // Setup the requested toast message
-                            activeToast = Toast.makeText(ctx, msg, duration);
+                            if(activeToast != null){
+                                // Already an active toast, update it rather than creating new
+                                activeToast.setText(msg);
+                                activeToast.setDuration(duration);
+                            } else {
+                                // Setup the requested toast message
+                                activeToast = Toast.makeText(ctx, msg, duration);
+                            }
                         } catch (Exception e) {
-                            Log.e("PicklePKG", "Toasts.Show(..) failed to Toast.makeText(..) - " + e);
+                            Log.e("PicklePKG", "Toasts.Show(..) failed to make toast - " + e);
                             return;
                         }
 
@@ -51,7 +54,7 @@ public class Toasts {
     }
 
     public static void Hide() {
-        // If there are no active toasts we can stop
+        // If there are no active toasts, return early
         if (activeToast == null) return;
 
         Handler mainLooper = null;
@@ -72,6 +75,8 @@ public class Toasts {
                             try {
                                 // Force cancel the current active toast message
                                 activeToast.cancel();
+
+                                activeToast = null;
                             } catch (Exception e) {
                                 Log.e("PicklePKG", "Toasts.Hide(..) failed to cancel active toast! - " + e);
                             }
@@ -79,8 +84,6 @@ public class Toasts {
                     }
             );
         }
-
-        activeToast = null;
     }
 
 }

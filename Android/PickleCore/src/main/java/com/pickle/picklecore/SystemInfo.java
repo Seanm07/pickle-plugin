@@ -460,7 +460,7 @@ public class SystemInfo {
             // seems like some android TVs have this activity stripped or changed in some way
             Log.e("PicklePKG", "SystemInfo.OpenSettingsApp(..) activity ACTION_APPLICATION_DETAILS_SETTINGS not available!");
 
-            Toasts.Show(ctx, "Application settings unavailable on this device!", 3);
+            Toasts.ShowToast(ctx, "Application settings unavailable on this device!", true);
         }
     }
 

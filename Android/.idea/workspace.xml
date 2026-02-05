@@ -103,21 +103,21 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.cidr.known.project.marker": "true",
-    "ScreenRecorder.SavePath": "C:\\Users\\Sean\\Downloads\\device-2024-07-22-145941.mp4",
-    "cidr.known.project.marker": "true",
-    "com.google.services.firebase.aqiPopupShown": "true",
-    "last_opened_file_path": "C:/Users/Sean/Downloads",
-    "memory.settings.postsync.last.time.stamp": "1750674620174",
-    "project.structure.last.edited": "Suggestions",
-    "project.structure.proportion": "0.17",
-    "project.structure.side.proportion": "0.2",
-    "run.code.analysis.last.selected.profile": "pProject Default",
-    "settings.editor.selected.configurable": "experimental"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;ScreenRecorder.SavePath&quot;: &quot;C:\\Users\\Sean\\Downloads\\device-2024-07-22-145941.mp4&quot;,
+    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;com.google.services.firebase.aqiPopupShown&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/Sean/Downloads&quot;,
+    &quot;memory.settings.postsync.last.time.stamp&quot;: &quot;1769423302850&quot;,
+    &quot;project.structure.last.edited&quot;: &quot;Suggestions&quot;,
+    &quot;project.structure.proportion&quot;: &quot;0.17&quot;,
+    &quot;project.structure.side.proportion&quot;: &quot;0.2&quot;,
+    &quot;run.code.analysis.last.selected.profile&quot;: &quot;pProject Default&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;experimental&quot;
   }
-}]]></component>
+}</component>
   <component name="PsdUISettings">
     <option name="BUILD_VARIANTS_TAB" value="Build Types" />
     <option name="LAST_EDITED_BUILD_TYPE" value="release" />

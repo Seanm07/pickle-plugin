@@ -7,10 +7,6 @@
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/PickleCore/Pickle_Plugin.PickleCore.androidTest.iml" filepath="$PROJECT_DIR$/.idea/modules/PickleCore/Pickle_Plugin.PickleCore.androidTest.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/PickleCore/Pickle_Plugin.PickleCore.main.iml" filepath="$PROJECT_DIR$/.idea/modules/PickleCore/Pickle_Plugin.PickleCore.main.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/PickleCore/Pickle_Plugin.PickleCore.unitTest.iml" filepath="$PROJECT_DIR$/.idea/modules/PickleCore/Pickle_Plugin.PickleCore.unitTest.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/Pickle_Plugin.app.iml" filepath="$PROJECT_DIR$/.idea/modules/app/Pickle_Plugin.app.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/Pickle_Plugin.app.androidTest.iml" filepath="$PROJECT_DIR$/.idea/modules/app/Pickle_Plugin.app.androidTest.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/Pickle_Plugin.app.main.iml" filepath="$PROJECT_DIR$/.idea/modules/app/Pickle_Plugin.app.main.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/Pickle_Plugin.app.unitTest.iml" filepath="$PROJECT_DIR$/.idea/modules/app/Pickle_Plugin.app.unitTest.iml" />
     </modules>
   </component>
 </project>

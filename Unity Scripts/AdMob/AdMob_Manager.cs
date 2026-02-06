@@ -369,7 +369,7 @@ public class AdMob_Manager : MonoBehaviour {
                 Debug.Log("AdMob Debug - Ad Removal Purchased: " + hasPurchasedAdRemoval);
             }
 
-            #if false && UNITY_EDITOR
+            #if UNITY_EDITOR
                 // Fake an initialisation complete call while in the editor
                 StartCoroutine(EditorScheduleFakeInitializationFinished());
             #else

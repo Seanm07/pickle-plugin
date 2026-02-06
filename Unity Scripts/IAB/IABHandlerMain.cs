@@ -1510,15 +1510,21 @@ public class IABHandlerMain : MonoBehaviour, IABHandler, IDetailedStoreListener 
     }
 
     private void OnPurchaseVerificationCompleted(Product product, string originalTransactionId = "", string payload = "") {
-        PayoutDefinition payout = product.definition.payout;
         int quantity = 1;
 
-        if (payout != null) {
-            quantity = (int)payout.quantity;
+        if (!string.IsNullOrEmpty(payload)) {
+            JSONNode payloadData = JSON.Parse(payload);
 
-            if (quantity <= 0 || quantity >= int.MaxValue)
-                quantity = 1;
+            if (payloadData != null && payloadData.HasKey("json")) {
+                JSONNode payloadJSONData = JSON.Parse(payloadData["json"].Value);
+
+                if (payloadJSONData != null && payloadJSONData.HasKey("quantity"))
+                    quantity = payloadJSONData["quantity"].AsInt;
+            }
         }
+        
+        if (quantity <= 0 || quantity >= int.MaxValue)
+            quantity = 1;
         
         IAB.OnPurchaseVerificationCompleted(IAB.GetItemBySKU(product.definition.storeSpecificId), quantity, originalTransactionId, payload);
 

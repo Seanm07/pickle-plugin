@@ -9,6 +9,12 @@ public class PickleCore : MonoBehaviour {
         private static extern void TriggerHapticFeedback(string style, double duration);
         
         [System.Runtime.InteropServices.DllImport("__Internal")]
+        private static extern void ShowToast(string message, double duration);
+        
+        [System.Runtime.InteropServices.DllImport("__Internal")]
+        private static extern void HideToast();
+        
+        [System.Runtime.InteropServices.DllImport("__Internal")]
         private static extern string GetSettingsURL();
     
         [System.Runtime.InteropServices.DllImport("__Internal")]
@@ -338,7 +344,9 @@ public class PickleCore : MonoBehaviour {
         // longShowTime true = 3.5 seconds / longShowTime false = 2 seconds (system defined we can't change these)
         public static void DisplayToastMessage(string toastMessage, bool longShowTime = false) {
             #if UNITY_ANDROID && !UNITY_EDITOR
-                    CallStatic(toasts, "ShowToast", context, toastMessage, longShowTime);
+                CallStatic(toasts, "ShowToast", context, toastMessage, longShowTime);
+            #elif UNITY_IPHONE && !UNITY_EDITOR
+                ShowToast(toastMessage, longShowTime ? 3.5f : 2f);
             #else
                 Debug.Log("Toast not supported on this platform: " + toastMessage);
             #endif
@@ -346,7 +354,9 @@ public class PickleCore : MonoBehaviour {
 
         public static void CancelToastMessage() {
             #if UNITY_ANDROID && !UNITY_EDITOR
-                    CallStatic(toasts, "HideToast");
+                CallStatic(toasts, "HideToast");
+            #elif UNITY_IPHONE && !UNITY_EDITOR
+                HideToast();
             #endif
         }
         

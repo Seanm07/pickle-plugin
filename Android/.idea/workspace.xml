@@ -12,9 +12,7 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="9ebb3717-ff7a-4c5e-9bf7-665fa56315f4" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/../PicklePlugin.zip" beforeDir="false" afterPath="$PROJECT_DIR$/../PicklePlugin.zip" afterDir="false" />
-    </list>
+    <list default="true" id="9ebb3717-ff7a-4c5e-9bf7-665fa56315f4" name="Default Changelist" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />

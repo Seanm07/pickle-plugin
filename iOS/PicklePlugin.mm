@@ -1,6 +1,7 @@
 #include "PicklePlugin.h"
 
 #import <AdSupport/AdSupport.h>
+#import <Foundation/Foundation.h>
 
 #if defined(__IPHONE_14_0) || defined(__MAC_11_0)
     // iOS 14 app tracking transparency
@@ -46,6 +47,9 @@
 @implementation PicklePlugin
 
     extern UIViewController* UnityGetGLViewController();
+
+    static UIView *toastView = nil;
+    static NSTimer *toastTimer = nil;
 
     // Used to keep the reference of the share popup window alive to trigger the callback events
     static PicklePlugin *sharedInstance = nil;
@@ -139,6 +143,82 @@
         }
     }
 
+    - (void)showToastWithMessage:(NSString *)message duration:(NSTimeInterval)duration {
+        if (message.length == 0) return;
+
+        // Force this to run on the main thread
+        dispatch_async(dispatch_get_main_queue(), ^{
+            // Force remove any existing toast timers (cancelling scheduled hideToast calls)
+            if (toastTimer) {
+                [toastTimer invalidate];
+                toastTimer = nil;
+            }
+            
+            // Force remove any existing toast views
+            if(toastView){
+                [toastView removeFromSuperview];
+                toastView = nil;
+            }
+            
+            UIViewController *rootVC = [UIApplication sharedApplication].keyWindow.rootViewController;
+            UIView *parentView = rootVC.view;
+
+            // Container
+            toastView = [[UIView alloc] init];
+            toastView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.8];
+            toastView.layer.cornerRadius = 6.0;
+            toastView.clipsToBounds = YES;
+
+            // Label
+            UILabel *label = [[UILabel alloc] init];
+            label.text = message;
+            label.textColor = [UIColor whiteColor];
+            label.font = [UIFont systemFontOfSize:14];
+            label.textAlignment = NSTextAlignmentCenter;
+            label.numberOfLines = 0; // unlimited
+
+            // Layout settings
+            CGFloat maxWidth = parentView.bounds.size.width * 0.8;
+            CGSize labelSize = [label sizeThatFits:CGSizeMake(maxWidth, CGFLOAT_MAX)];
+            CGFloat padding = 12.0;
+            
+            label.frame = CGRectMake(padding, padding, labelSize.width, labelSize.height);
+            toastView.frame = CGRectMake(0, 0, labelSize.width + padding * 2, labelSize.height + padding * 2);
+
+            // Position the toast bottom center of the screen
+            CGFloat bottomOffset = 80.0;
+            toastView.center = CGPointMake(parentView.bounds.size.width / 2, parentView.bounds.size.height - bottomOffset);
+
+            [toastView addSubview:label];
+            [parentView addSubview:toastView];
+
+            // Schedule a timer to auto hide the toast after duration seconds
+            toastTimer = [NSTimer scheduledTimerWithTimeInterval:(duration > 0 ? duration : 2.0) target:self selector:@selector(hideToast) userInfo:nil repeats:NO];
+        });
+    }
+
+    - (void)hideToast {
+        // Force this to run on the main thread
+        dispatch_async(dispatch_get_main_queue(), ^{
+            // Force remove any existing toast timers
+            if (toastTimer) {
+                [toastTimer invalidate];
+                toastTimer = nil;
+            }
+
+            // If a toast view exists, make it fade out over 0.5 seconds
+            if (!toastView) return;
+
+            [UIView animateWithDuration:0.5 animations:^{
+                toastView.alpha = 0.0;
+            } completion:^(BOOL finished) {
+                 [toastView removeFromSuperview];
+                 toastView = nil;
+             }];
+        });
+    }
+
+
     # pragma mark - C API
 
     void ShowShare(char* message, char* subject, bool* doShareIcon){
@@ -171,11 +251,26 @@
         }
     }
 
+    // IDFA (unique device id) (will return all 0s if ATT wasn't accepted)
+    char* GetIOSAdvertisingIdentifier(){
+        NSUUID *adId = [[ASIdentifierManager sharedManager] advertisingIdentifier];
+        NSString *adIdNSString = [adId UUIDString];
+        return ConvertNSStringToCString(adIdNSString);
+    }
+
     char* GetSettingsURL(){
         // Grab the string to open the settings app
-        NSURL * url = [NSURL URLWithString: UIApplicationOpenSettingsURLString];
+        NSURL *url = [NSURL URLWithString: UIApplicationOpenSettingsURLString];
 
         return ConvertNSStringToCString(url.absoluteString);
+    }
+
+    // IDFV (device id across same developer apps)
+    char* GetIdentifierForVendor() {
+        NSUUID *uuid = [[UIDevice currentDevice] identifierForVendor];
+        NSString *uuidString = [uuid UUIDString];
+        
+        return ConvertNSStringToCString(uuidString);
     }
 
     // Convert an NSString to a regular null terminated array of chars
@@ -203,5 +298,16 @@
         double feedbackDuration = duration > 0 ? duration : 0.1; // Default duration if not provided
         
         [[PicklePlugin new] triggerHapticFeedbackWithStyle:impactStyle duration:feedbackDuration];
+    }
+
+    void ShowToast(char* message, double duration) {
+        if (!message) return;
+
+        NSString *msg = [NSString stringWithUTF8String:message];
+        [[PicklePlugin sharedInstance] showToastWithMessage:msg duration:duration];
+    }
+
+    void HideToast() {
+        [[PicklePlugin sharedInstance] hideToast];
     }
 @end

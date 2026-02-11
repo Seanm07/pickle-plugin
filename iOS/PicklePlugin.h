@@ -24,11 +24,23 @@
         // Send a request to show the app tracking transparency prompt
         void RequestTrackingAuth(AppTrackingTransparencyCallback callback);
         
+        // Returns raw IDFA (will be all 0s if ATT wasn't accepted) (unique id across all apps)
+        char* GetIOSAdvertisingIdentifier();
+        
         // Returns the URL to open the settings app
         char* GetSettingsURL();
         
+        // Returns the identifierForVendor (IDFV) UUID as a string (unique id across apps by same developer)
+        char* GetIdentifierForVendor();
+        
         // Haptic feedback
         void TriggerHapticFeedback(char* style, double duration);
+        
+        // Show a notification message "toast" for duration seconds
+        void ShowToast(char* message, double duration);
+        
+        // Force hides any active toasts
+        void HideToast();
         
     #ifdef __cplusplus
     }

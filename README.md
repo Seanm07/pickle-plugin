@@ -63,7 +63,10 @@ Triggers a vibration on all connected controllers.
 > Requires Android manifest permission `<uses-permission android:name="android.permission.VIBRATE" />` or vibrations will not do anything.
 
 > [!CAUTION]
-> We currently do not support this functionality on iOS<br>We do not support separate controller targetting, if this is a wanted feature make an issue requesting it and I can add it.
+> We currently do not support this functionality on iOS
+
+> [!CAUTION]
+> We do not support separate controller targetting, if this is a wanted feature please request it via an issue report
 
 | Parameter | Type | Description |
 |------------|------|-------------|
@@ -73,7 +76,7 @@ Triggers a vibration on all connected controllers.
 
 ### `PickleCore.StopVibration()`
 
-Stops any active vibrations.
+Stops any active device vibrations.
 
 > [!CAUTION]
 > We currently do not support this functionality on iOS
@@ -210,7 +213,7 @@ Some android devices have very slightly different X and Y DPIs, it's usually not
 ### `PickleCore.GetUsedMemory()`
 
 > [!WARNING]
-> Android memory allocation may not work like your expect! Total memory is the total amount the system has currently allocated to the JVM not the total memory available in the whole device and may be resized by the system based on what it thinks the app needs and depending on other running apps.
+> Android memory allocation may not work like you expect! Total memory is the total amount the system has currently allocated to the JVM not the total memory available in the whole device and may be resized by the system based on what it thinks the app needs and depending on other running apps.
 
 Returns the total used memory from the total memory current allocated to the JVM as a long.
 
@@ -220,7 +223,7 @@ Returns the total used memory from the total memory current allocated to the JVM
 ### `PickleCore.GetTotalMemory()`
 
 > [!WARNING]
-> Android memory allocation may not work like your expect! Total memory is the total amount the system has currently allocated to the JVM not the total memory available in the whole device and may be resized by the system based on what it thinks the app needs and depending on other running apps.
+> Android memory allocation may not work like you expect! Total memory is the total amount the system has currently allocated to the JVM not the total memory available in the whole device and may be resized by the system based on what it thinks the app needs and depending on other running apps.
 
 Returns the total used memory current allocated to the JVM as a long.
 
@@ -230,7 +233,7 @@ Returns the total used memory current allocated to the JVM as a long.
 ### `PickleCore.GetMaxMemory()`
 
 > [!WARNING]
-> Android memory allocation may not work like your expect! Total memory is the total amount the system has currently allocated to the JVM not the total memory available in the whole device and may be resized by the system based on what it thinks the app needs and depending on other running apps.
+> Android memory allocation may not work like you expect! Total memory is the total amount the system has currently allocated to the JVM not the total memory available in the whole device and may be resized by the system based on what it thinks the app needs and depending on other running apps.
 
 Returns the maximum memory the system can currently allocate to the JVM as a long.
 
@@ -240,7 +243,7 @@ Returns the maximum memory the system can currently allocate to the JVM as a lon
 ### `PickleCore.GetFreeMemory()`
 
 > [!WARNING]
-> Android memory allocation may not work like your expect! Total memory is the total amount the system has currently allocated to the JVM not the total memory available in the whole device and may be resized by the system based on what it thinks the app needs and depending on other running apps.
+> Android memory allocation may not work like you expect! Total memory is the total amount the system has currently allocated to the JVM not the total memory available in the whole device and may be resized by the system based on what it thinks the app needs and depending on other running apps.
 
 Returns the total free memory from the total memory current allocated to the JVM as a long.
 

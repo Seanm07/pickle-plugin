@@ -369,37 +369,32 @@ public class AdMob_Manager : MonoBehaviour {
                 Debug.Log("AdMob Debug - Ad Removal Purchased: " + hasPurchasedAdRemoval);
             }
 
-            #if UNITY_EDITOR
-                // Fake an initialisation complete call while in the editor
-                StartCoroutine(EditorScheduleFakeInitializationFinished());
-            #else
-                // Trying to initialize in the editor causes a NuLLReferenceException due to the initialisation status being null
-                OnInitializationComplete += OnInitializationFinished;
+            // Trying to initialize in the editor causes a NuLLReferenceException due to the initialisation status being null
+            OnInitializationComplete += OnInitializationFinished;
 
-                // Force pauses the app while interstitials are open on iOS, this also mutes game audio
-                MobileAds.SetiOSAppPauseOnBackground(true);
+            // Force pauses the app while interstitials are open on iOS, this also mutes game audio
+            MobileAds.SetiOSAppPauseOnBackground(true);
 
-                RequestConfiguration adRequestConfiguration = new RequestConfiguration();
+            RequestConfiguration adRequestConfiguration = new RequestConfiguration();
 
-                if (enableTestMode) {
-                    // All simulators are marked as test devices
-                    adRequestConfiguration.TestDeviceIds.Add(AdRequest.TestDeviceSimulator);
-                    
-                    // Add the current device as a tester
-                    adRequestConfiguration.TestDeviceIds.Add(GetTestDeviceId());
-                }
-
-                bool childDirectedTreatment = GetPlatformAdData().tagForChildDirectedTreatment;
+            if (enableTestMode) {
+                // All simulators are marked as test devices
+                adRequestConfiguration.TestDeviceIds.Add(AdRequest.TestDeviceSimulator);
                 
-                adRequestConfiguration.TagForUnderAgeOfConsent = childDirectedTreatment ? TagForUnderAgeOfConsent.True : TagForUnderAgeOfConsent.False;
-                adRequestConfiguration.TagForChildDirectedTreatment = childDirectedTreatment ? TagForChildDirectedTreatment.True : TagForChildDirectedTreatment.False;
+                // Add the current device as a tester
+                adRequestConfiguration.TestDeviceIds.Add(GetTestDeviceId());
+            }
 
-                MobileAds.SetRequestConfiguration(adRequestConfiguration);
+            bool childDirectedTreatment = GetPlatformAdData().tagForChildDirectedTreatment;
+            
+            adRequestConfiguration.TagForUnderAgeOfConsent = childDirectedTreatment ? TagForUnderAgeOfConsent.True : TagForUnderAgeOfConsent.False;
+            adRequestConfiguration.TagForChildDirectedTreatment = childDirectedTreatment ? TagForChildDirectedTreatment.True : TagForChildDirectedTreatment.False;
 
-                // Manually initialise admob with an ad manager
-                // Initializing AdMob can cause ANRs so make sure the app is doing as little as possible when initializing
-                MobileAds.Initialize(OnInitializationComplete);
-            #endif
+            MobileAds.SetRequestConfiguration(adRequestConfiguration);
+
+            // Manually initialise admob with an ad manager
+            // Initializing AdMob can cause ANRs so make sure the app is doing as little as possible when initializing
+            MobileAds.Initialize(OnInitializationComplete);
         } else {
             Debug.Log("AdMob is not enabled, no adverts will be triggered!");
         }
@@ -482,14 +477,6 @@ public class AdMob_Manager : MonoBehaviour {
     public float PtToPx(float pt) {
         return pt / GetPixelToPointFactor();
     }
-
-    #if UNITY_EDITOR
-    private IEnumerator EditorScheduleFakeInitializationFinished() {
-        yield return new WaitForSecondsRealtime(1f);
-
-        OnInitializationFinished(default);
-    }
-    #endif
 
     // AdMob callback - !! not guaranteed to be called on main thread !!
     private void OnInitializationFinished(InitializationStatus status) {

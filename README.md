@@ -1,30 +1,39 @@
 # Pickle Plugin
 
-A collection of scripts alongside our Game Pickle plugin for use in Unity mobile games.
+A collection of scripts used alongside the Game Pickle plugin in Unity mobile games.
 
----
+## Contents
 
-# Installation
+- [Installation](#installation)
+  - [Manual Install from ZIP](#manual-install-from-zip)
+  - [Add Scripts to a Scene](#add-scripts-to-a-scene)
+- [Pickle Core Functions](#pickle-core-functions)
+  - [Vibrations](#vibrations)
+  - [App Info](#app-info)
+  - [System Info](#system-info)
+  - [Toasts](#toasts)
+  - [Notifications](#notifications)
+- [Firebase Analytics — PickleEventCategory](#firebase-analytics--pickeleventcategory)
 
-## Manual Install from zip
+## Installation
 
-1. From the [releases page](https://github.com/Seanm07/pickle-plugin/releases) under Assets download PicklePlugin.zip
-2. Drag the Plugins folder into the root of your project Asset folder
-3. If the project already has our pickle scripts we recommend just replacing each script so you don't break inspector references, otherwise just add the scripts folder anywhere in your project as appropriate
+### Manual Install from ZIP
 
-## Add scripts to scene
+1. From the [releases page](https://github.com/Seanm07/pickle-plugin/releases), download `PicklePlugin.zip` from the **Assets** section.
+2. Drag the `Plugins` folder into the root of your project's `Assets` folder.
+3. If the project already contains Pickle scripts, we recommend replacing the existing scripts to avoid breaking Inspector references. Otherwise, add the scripts to your project as appropriate.
 
-1. Either create an empty GameObject in your initial build scene or use an existing GameObject which should never be destroyed (DontDestroyOnLoad)
+### Add Scripts to a Scene
+
+1. Create an empty GameObject in your initial build scene, or use an existing GameObject that should never be destroyed (`DontDestroyOnLoad`).
 2. Attach IABManager.cs, FirebaseManager.cs, AdMob_Manager.cs, IAS_Manager.cs, CrossPlatformManager.cs, PickleCore.cs, UnityMainThreadDispatcher.cs to the GameObject
 3. (Optional) Attach ClickLockManager.cs to the GameObject
 4. (Optional) Attach TenjinManager.cs to the GameObject
-5. Configure all inspector values as required
+5. Configure all Inspector values as required.
 
----
+## Pickle Core Functions
 
-# Pickle Core functions
-
-PickleCore.cs is the wrapper for C# interacting with our Java plugin on Android or iOS C++ plugin.
+`PickleCore.cs` is the C# wrapper for interacting with the Android Java plugin and the iOS C++ plugin.
 
 ## Vibrations
 
@@ -37,7 +46,7 @@ Triggers a light haptic vibration.
 
 | Parameter | Type | Description |
 |------------|------|-------------|
-| `strength` | `float` | Vibration intensity between **0.0f** and **1.0f** this value is clamped and converted to one of 4 predefined system haptic strength values: <br><=0.25 CLOCK_TICK<br><=0.5 KEYBOARD_TAP<br><=0.75 VIRTUAL_KEY<br><=1.0 LONG_PRESS <br><br>**(Note: For precise control use [PickleCore.DoVibration(...)](#picklecoredovibrationlong-milliseconds-float-strength) instead)** |
+| `strength` | `float` | Vibration intensity between **0.0f** and **1.0f**. The value is clamped and converted to one of four predefined system haptic strength values: <br><=0.25 CLOCK_TICK<br><=0.5 KEYBOARD_TAP<br><=0.75 VIRTUAL_KEY<br><=1.0 LONG_PRESS <br><br>**(Note: For precise control use [PickleCore.DoVibration(...)](#picklecoredovibrationlong-milliseconds-float-strength) instead)** |
 | `overrideSystemSettings` | `bool` | When `true` vibration will trigger even if system-level button press haptics are disabled.<br><br>**(Note: API 33+ removed system haptic settings overriding, so this will instead replicate a haptic vibration via the regular Vibration API if the app has Vibration permission and the device is using API 33+)** |
 
 ### `PickleCore.DoVibration(long milliseconds, float strength)`
@@ -49,12 +58,12 @@ Triggers a vibration with more control over strength and duration.
 
 | Parameter | Type | Description |
 |------------|------|-------------|
-| `milliseconds` | `long` | How many miliseconds the device will vibrate for, must be positive. |
+| `milliseconds` | `long` | How many milliseconds the device will vibrate for, must be positive. |
 | `strength` | `float` | Vibration intensity between **0.0f** and **1.0f** this value is clamped. <br><br>On iOS vibration strength is split into 5 predefined strengths: <br>>=0.8 heavy<br>>=0.6 medium<br>>= 0.4 rigid<br>>=0.2 soft<br>>=0 light |
 
-### `PickleCore.DoControllerVibration(bool useLowFrequencyMotor long milliseconds, float strength)`
+### `PickleCore.DoControllerVibration(bool useLowFrequencyMotor, long milliseconds, float strength)`
 
-Triggers a vibration on all connected controllers. 
+Triggers a vibration on all connected controllers.
 
 > [!NOTE]
 > Only available on devices running Android API 31+ as controller support on Android was very limited before this.
@@ -66,12 +75,12 @@ Triggers a vibration on all connected controllers.
 > We currently do not support this functionality on iOS
 
 > [!CAUTION]
-> We do not support separate controller targetting, if this is a wanted feature please request it via an issue report
+> We do not support separate controller targeting, if this is a wanted feature please request it via an issue report
 
 | Parameter | Type | Description |
 |------------|------|-------------|
-| `useLowFrequencyMotor` | `long` | Most controllers have 2 vibration motors, the low frequency motor is used for deeper more intense vibrations and the high frequency motor is used for subtle taps and haptic effects. |
-| `milliseconds` | `long` | How many miliseconds the controllers will vibrate for, must be positive. |
+| `useLowFrequencyMotor` | `bool` | Most controllers have 2 vibration motors, the low frequency motor is used for deeper more intense vibrations and the high frequency motor is used for subtle taps and haptic effects. |
+| `milliseconds` | `long` | How many milliseconds the controllers will vibrate for, must be positive. |
 | `strength` | `float` | Vibration intensity between **0.0f** and **1.0f** this value is clamped. |
 
 ### `PickleCore.StopVibration()`
@@ -102,7 +111,7 @@ Returns the local time as a unix timestamp long at the time of app install.
 Returns a comma separated list of Android packages installed on the device containing the search string.
 
 > [!CAUTION]
-> Depreciated! No longer supported on Android 11+ due to new security policies, will just return blank
+> Deprecated! No longer supported on Android 11+ due to new security policies, will just return blank
 
 > [!CAUTION]
 > We currently do not support this functionality on iOS
@@ -113,14 +122,14 @@ Returns a comma separated list of Android packages installed on the device conta
 
 ### `PickleCore.DoesAppContainBadPermissions()`
 
-Returns a bool on whether the app was detected to contain some dangerous permissions which we see modded APKs usually add to package adware/malware with their downloads.
+Returns a bool on whether the app was detected to contain dangerous permissions that modded APKs commonly add when distributing adware or malware.
 
 > [!CAUTION]
 > We currently do not support this functionality on iOS
 
 ### `PickleCore.AppRunId()`
 
-A secondary method for checking if modded APKs packaged any bad permissions into the app whilst not directly looking like a direct permission checking function which can be blanket changed to return false.
+A secondary method for checking whether a modded APK has added bad permissions without directly exposing a permission-checking function that could be trivially patched to always return `false`.
 
 - 58382 (14595) = DoesAppContainBadPermissions returned true so it wasn't patched out
 - 48276 (12069) = DoesAppContainBadPermissions returned false and we encountered an error
@@ -155,7 +164,7 @@ Returns Android API level as an int
 
 ### `PickleCore.DeviceHasNotch()`
 
-Return true if the device was detected to have a notch cutout on the screen. This check is more advanced than built in Unity checks as we also support a range of manufacturer specific identifiers before the notch cutout got an android universal flag.
+Returns `true` if the device was detected to have a notch cutout on the screen. This check is more advanced than built in Unity checks as we also support a range of manufacturer specific identifiers before the notch cutout got an android universal flag.
 
 > [!CAUTION]
 > We currently do not support this functionality on iOS
@@ -169,7 +178,7 @@ Returns the screen safe area as a Rect. This check is more advanced than built i
 
 | Parameter | Type | Description |
 |------------|------|-------------|
-| `avoidNavigationBar` | `string` | When true the safe area will be pushed up above the permanent transparent software navigation bar if the device has one (this does not include the temporary navigation buttons which you can make appear by swiping) |
+| `avoidNavigationBar` | `bool` | When true the safe area will be pushed up above the permanent transparent software navigation bar if the device has one (this does not include the temporary navigation buttons which you can make appear by swiping) |
 
 ### `PickleCore.GetScreenWidth()`
 
@@ -225,7 +234,7 @@ Returns the total used memory from the total memory current allocated to the JVM
 > [!WARNING]
 > Android memory allocation may not work like you expect! Total memory is the total amount the system has currently allocated to the JVM not the total memory available in the whole device and may be resized by the system based on what it thinks the app needs and depending on other running apps.
 
-Returns the total used memory current allocated to the JVM as a long.
+Returns the total memory currently allocated to the JVM as a long.
 
 > [!CAUTION]
 > We currently do not support this functionality on iOS, it will return -1 and log an error
@@ -245,7 +254,7 @@ Returns the maximum memory the system can currently allocate to the JVM as a lon
 > [!WARNING]
 > Android memory allocation may not work like you expect! Total memory is the total amount the system has currently allocated to the JVM not the total memory available in the whole device and may be resized by the system based on what it thinks the app needs and depending on other running apps.
 
-Returns the total free memory from the total memory current allocated to the JVM as a long.
+Returns the total free memory from the memory currently allocated to the JVM as a long.
 
 > [!CAUTION]
 > We currently do not support this functionality on iOS, it will return -1 and log an error
@@ -265,7 +274,7 @@ Displays a small system-style popover message bottom middle of the screen.
 
 | Parameter | Type | Description |
 |------------|------|-------------|
-| `message` | `string` | Message in the popover message, keep this short as different android versions trim at differen lengths set by the system |
+| `message` | `string` | Message in the popover message, keep this short as different android versions trim at different lengths set by the system |
 | `longShowTime` | `bool` | Android toasts support showing for either 3.5 seconds or 2.0 seconds, when true it uses the longer show time (this same functionality is replicated for iOS) |
 
 > [!NOTE]
@@ -309,20 +318,18 @@ Cancels the previously scheduled notification matching the notification id.
 
 Returns a string containing information about the current app launch allowing you to know if the app was launched via a notification and if any special parameters were attached to the notification such as where in the app to jump to or any rewards for clicking the notification.
 
-
-### Example using the notification system
+### Notification System Example
 
 An example notification script from Helicopter Rescue - https://pastebin.com/PH3X9K7S
 
 **This is how the new android notification system works:**
-1. Create a notification group (you can re-call this as much as you want if it already exists then np, but note that clearing data removes notification groups) 
-2. Create a notification channel referencing the groupid string you made for your group (you can re-call as much as you want etc etc)
-3. SendNotification(...) with how many seconds etc, this will schedule the notification via the android scheduler to call onReceieve inside the plugin with the data we set to be sent when the alarm triggers, in this onReceieve function is where the visible notification is displayed to the user)
+1. Create a notification group. You can call this as often as needed; if it already exists, nothing happens. Note that clearing app data removes notification groups.
+2. Create a notification channel referencing the `groupId` string used for the group. You can call this as often as needed.
+3. Call `SendNotification(...)` with the desired delay. This schedules the notification with Android's scheduler. When the alarm triggers, the plugin's `onReceive` function receives the configured data and displays the notification.
 
-It's a good idea to make a group for each TYPE of notifications, e.g Promotions, Content Unlocked, Daily Reward notifications (the player can manually block notifications from each group)
+It's a good idea to create a group for each **type** of notification, such as Promotions, Content Unlocked, or Daily Rewards. Players can manually block notifications from each group.
 
-
-## Firebase Analytics - PickleEventCategory Documentation
+## Firebase Analytics — PickleEventCategory
 
 The `PickleEventCategory` class contains a set of predefined event categories used for logging various events within an application.
 We had to switch to predefined event categories as the firebase analytics backend was getting too messy and most the time developers were logging incorrectly which was causing game analytics to be useless.
@@ -332,27 +339,27 @@ We had to switch to predefined event categories as the firebase analytics backen
 ### PickleScripts
 
 #### APP_STORE
-- **Description**: Track the source store which the app was installed from.
+- **Description**: Tracks the source store from which the app was installed.
 - **Code Reference**: `PickleEventCategory.PickleScripts.APP_STORE`
 - **Raw Category Name**: `app_store`
 
 #### ADMOB_TTL
-- **Description**: Tracking of how long different admob components take to initialize.
+- **Description**: Tracks how long different AdMob components take to initialize.
 - **Code Reference**: `PickleEventCategory.PickleScripts.ADMOB_TTL`
 - **Raw Category Name**: `admob_ttl`
 
 #### IAS_CLICK
-- **Description**: Ad impressions on our internal ad system.
+- **Description**: Tracks ad clicks on our internal ad system.
 - **Code Reference**: `PickleEventCategory.PickleScripts.IAS_CLICK`
 - **Raw Category Name**: `ias_click`
 
 #### IAS_IMPRESSION
-- **Description**: Ad clicks on our internal ad system.
+- **Description**: Tracks ad impressions on our internal ad system.
 - **Code Reference**: `PickleEventCategory.PickleScripts.IAS_IMPRESSION`
 - **Raw Category Name**: `ias_impression`
 
 #### IAP_PURCHASE_COMPLETE
-- **Description**: In-app purchases which were successfully and triggered the success callback.
+- **Description**: In-app purchases that completed successfully and triggered the success callback.
 - **Code Reference**: `PickleEventCategory.PickleScripts.IAP_PURCHASE_COMPLETE`
 - **Raw Category Name**: `iap_purchase_complete`
 
@@ -362,108 +369,108 @@ We had to switch to predefined event categories as the firebase analytics backen
 - **Raw Category Name**: `iap_purchase_error`
 
 #### IAB_RESTORE_SUCCESS
-- **Description**: In-app purchase restore actions which were successful.
+- **Description**: In-app purchase restore actions that were successful.
 - **Code Reference**: `PickleEventCategory.PickleScripts.IAB_RESTORE_SUCCESS`
 - **Raw Category Name**: `iab_restore_success`
 
 #### IAB_RESTORE_FAILED
-- **Description**: In-app purchase restore actions which failed.
+- **Description**: In-app purchase restore actions that failed.
 - **Code Reference**: `PickleEventCategory.PickleScripts.IAB_RESTORE_FAILED`
 - **Raw Category Name**: `iab_restore_failed`
 
 #### LOW_MEMORY_WARNING
-- **Description**: Track when the device reaches critically low memory.
+- **Description**: Tracks when the device reaches critically low memory.
 - **Code Reference**: `PickleEventCategory.PickleScripts.LOW_MEMORY_WARNING`
 - **Raw Category Name**: `low_memory_warning`
 
 #### PERSONALISATION_AUTH_FLOW
-- **Description**: Events logged relating to the personalisation and CMP flow.
+- **Description**: Events related to the personalisation and CMP flow.
 - **Code Reference**: `PickleEventCategory.PickleScripts.PERSONALISATION_AUTH_FLOW`
 - **Raw Category Name**: `personalisation_auth_flow`
 
 ## General Event Categories
 
 #### MESSAGE_PROMPTS
-- **Description**: Popup messages or dialogs which inform or ask the player a question.
+- **Description**: Popup messages or dialogs that inform the player or ask a question.
 - **Code Reference**: `PickleEventCategory.MESSAGE_PROMPTS`
 - **Raw Category Name**: `message_prompts`
 
 #### ITEM_PURCHASED
-- **Description**: Item purchased with in-game currency or other method.
+- **Description**: An item purchased with in-game currency or another payment method.
 - **Code Reference**: `PickleEventCategory.ITEM_PURCHASED`
 - **Raw Category Name**: `item_purchased`
 
 #### ITEM_EQUIPPED
-- **Description**: Item equipped, e.g., weapons, vehicles, characters.
+- **Description**: An item equipped by the player, such as a weapon, vehicle, or character.
 - **Code Reference**: `PickleEventCategory.ITEM_EQUIPPED`
 - **Raw Category Name**: `item_equipped`
 
 #### ITEM_COLLECTED
-- **Description**: Item collected, such as hidden packages or collectibles.
+- **Description**: An item collected by the player, such as a hidden package or collectible.
 - **Code Reference**: `PickleEventCategory.ITEM_COLLECTED`
 - **Raw Category Name**: `item_collected`
 
 #### MODE_SELECTED
-- **Description**: Mode or map selected by the player.
+- **Description**: A mode or map selected by the player.
 - **Code Reference**: `PickleEventCategory.MODE_SELECTED`
 - **Raw Category Name**: `mode_selected`
 
 #### MISSION_PROMPTED
-- **Description**: Mission prompted to player.
+- **Description**: A mission prompt shown to the player.
 - **Code Reference**: `PickleEventCategory.MISSION_PROMPTED`
 - **Raw Category Name**: `mission_prompted`
 
 #### MISSION_PROMPT_ACCEPTED
-- **Description**: Mission prompt accepted by player.
+- **Description**: A mission prompt accepted by the player.
 - **Code Reference**: `PickleEventCategory.MISSION_PROMPT_ACCEPTED`
 - **Raw Category Name**: `mission_prompt_accepted`
 
 #### MISSION_PROMPT_DECLINED
-- **Description**: Mission prompt declined by player.
+- **Description**: A mission prompt declined by the player.
 - **Code Reference**: `PickleEventCategory.MISSION_PROMPT_DECLINED`
 - **Raw Category Name**: `mission_prompt_declined`
 
 #### MISSION_START
-- **Description**: Mission entered/started.
+- **Description**: A mission entered or started by the player.
 - **Code Reference**: `PickleEventCategory.MISSION_START`
 - **Raw Category Name**: `mission_start`
 
 #### MISSION_COMPLETE
-- **Description**: Mission completed successfully.
+- **Description**: A mission completed successfully.
 - **Code Reference**: `PickleEventCategory.MISSION_COMPLETE`
 - **Raw Category Name**: `mission_complete`
 
 #### MISSION_FAILED
-- **Description**: Mission failed.
+- **Description**: A mission that failed.
 - **Code Reference**: `PickleEventCategory.MISSION_FAILED`
 - **Raw Category Name**: `mission_failed`
 
 #### MISSION_FAILED_REASON
-- **Description**: Reason for mission failure.
+- **Description**: The reason a mission failed.
 - **Code Reference**: `PickleEventCategory.MISSION_FAILED_REASON`
 - **Raw Category Name**: `mission_failed_reason`
 
 #### BUTTON_IMPRESSION
-- **Description**: Tracking of impressions on buttons.
+- **Description**: Tracks button impressions.
 - **Code Reference**: `PickleEventCategory.BUTTON_IMPRESSION`
 - **Raw Category Name**: `button_impression`
 
 #### BUTTON_CLICK
-- **Description**: Tracking of clicks on buttons.
+- **Description**: Tracks button clicks.
 - **Code Reference**: `PickleEventCategory.BUTTON_CLICK`
 - **Raw Category Name**: `button_click`
 
 #### LEVEL_UP
-- **Description**: Player leveled up, track the current level when leveling up in games with XP.
+- **Description**: Tracks when the player levels up. The current level should be logged for games that use XP.
 - **Code Reference**: `PickleEventCategory.LEVEL_UP`
 - **Raw Category Name**: `level_up`
 
 #### REFERRAL_SHARE
-- **Description**: Referral and app sharing events.
+- **Description**: Referral and app-sharing events.
 - **Code Reference**: `PickleEventCategory.REFERRAL_SHARE`
 - **Raw Category Name**: `referral_share`
 
 #### REFUEL
-- **Description**: Events relating to the refuel flow.
+- **Description**: Events related to the refuel flow.
 - **Code Reference**: `PickleEventCategory.REFUEL`
 - **Raw Category Name**: `refuel`

@@ -3,7 +3,8 @@ using System.ComponentModel;
 using UnityEngine;
 using Firebase.Analytics;
 using Firebase.Crashlytics;
-#if IVMETRICS_EVENTS_ENABLED
+using UnityEngine.Purchasing;
+#if IVMETRICS_ANALYTICS
     using IVMetrics;
 #endif
 
@@ -362,6 +363,42 @@ public class FirebaseAnalyticsManager : MonoBehaviour {
     public static void SetUserProperty(string propertyName, long propertyValue) {
         SetUserProperty(propertyName, propertyValue.ToString());
     }
+    
+    // Log a purchase after serverside validation has completed
+    public static void LogPurchase(string productId, double value, string currency, int quantity = 1) {
+        // Queue this function call until firebase is initialized
+        if (!IsFirebaseInitialised(() => LogPurchase(productId, value, currency, quantity)))
+            return;
+
+        currency = currency.ToUpperInvariant();
+
+        AppStore activeStore = CrossPlatformManager.GetActiveStore();
+
+        if (activeStore == AppStore.GooglePlay || activeStore == AppStore.AppleAppStore) {
+            // Built in event, this will automatically currency convert and display as an actual price unit
+            // Amazon not included as the purpose of this event is to be used as a datasource for Google Ad campaigns which can't use filters
+            FirebaseAnalytics.LogEvent(FirebaseAnalytics.EventPurchase,
+                new Parameter[] {
+                    new Parameter(FirebaseAnalytics.ParameterItemID, productId),
+                    new Parameter(FirebaseAnalytics.ParameterValue, value),
+                    new Parameter(FirebaseAnalytics.ParameterCurrency, currency),
+                    new Parameter(FirebaseAnalytics.ParameterQuantity, (long)quantity)
+                });
+        }
+
+        // Universal event for all stores to log to
+        FirebaseAnalytics.LogEvent(PickleEventCategory.AnalyticsKeys.IAP_PURCHASE_COMPLETE,
+            new Parameter[] {
+                new Parameter(FirebaseAnalytics.ParameterProductID, productId),
+                //new Parameter(FirebaseAnalytics.ParameterValue, value), // logging to a custom event does not currency convert and will display the value as a rounded int
+                new Parameter(FirebaseAnalytics.ParameterCurrency, currency),
+                new Parameter(FirebaseAnalytics.ParameterQuantity, (long)quantity)
+            });
+
+        #if IVMETRICS_ANALYTICS
+            IVMetricsManager.LogEvent(PickleEventCategory.AnalyticsKeys.IAP_PURCHASE_COMPLETE, productId);
+        #endif
+    }
 
     private static void LogEvent(string eventCategory, string eventDimension, string eventValue) {
         if (String.IsNullOrEmpty(eventCategory) || String.IsNullOrEmpty(eventDimension) || String.IsNullOrEmpty(eventValue))
@@ -375,7 +412,7 @@ public class FirebaseAnalyticsManager : MonoBehaviour {
         FixFormatting(ref eventDimension, FormatType.EventParameterName);
         FixFormatting(ref eventValue, FormatType.EventParameterValue);
 
-#if IVMETRICS_EVENTS_ENABLED
+#if IVMETRICS_ANALYTICS
         switch (eventCategory) {
             case FirebaseDefaultEvents.SCREEN_VIEW:
                 IVMetricsManager.LogEvent(eventCategory, IVParameterName.ScreenName, eventValue);
@@ -390,10 +427,6 @@ public class FirebaseAnalyticsManager : MonoBehaviour {
                 break;
             
             case PickleEventCategory.AnalyticsKeys.IAP_ERROR: // IAP system failed to initialise
-                IVMetricsManager.LogEvent(eventCategory, eventValue);
-                break;
-            
-            case PickleEventCategory.AnalyticsKeys.IAP_PURCHASE_COMPLETE: // Made a successful IAP purchase
                 IVMetricsManager.LogEvent(eventCategory, eventValue);
                 break;
             

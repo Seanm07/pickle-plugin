@@ -470,4 +470,10 @@ public class SystemInfo {
         return ctx.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK) ||
                 ctx.getPackageManager().hasSystemFeature(PackageManager.FEATURE_AUTOMOTIVE);
     }
+
+    public static boolean IsGooglePlayGamesPC(Context ctx) {
+        if(ctx == null) return false;
+
+        return ctx.getPackageManager().hasSystemFeature("com.google.android.play.feature.HPE_EXPERIENCE");
+    }
 }

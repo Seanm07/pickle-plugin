@@ -27,7 +27,7 @@ public class IABItem {
 
     public string title { get; set; } // Item title (up to 55 characters, can be localized)
     public string description { get; set; } // Item description (up to 80 characters, can be localized)
-    public string priceValue { get; set; } // Price excluding currency symbol e.g 1.23
+    public double priceValue { get; set; } // Price excluding currency symbol e.g 1.23
     public string formattedPrice { get; set; } // Includes currency symbol e.g £1.23 or $1.23
     public string currencyCode { get; set; } // ISO currency code e.g GBP, EUR, DZD, AMD.. ETC
 
@@ -36,7 +36,7 @@ public class IABItem {
 
     // Note: The introductory price is a one time first purchase offer on subscriptions, when that ends the user will be charged the normal priceValue/formattedPrice value
     public string introductoryFormattedPrice { get; set; } // Introductory subscription price with currency symbol included e.g £1.23, $1.23, €1.23.. ETC
-    public string introductoryPriceValue { get; set; } // Introductory subscription price excluding currency symbol e.g 1.23
+    public double introductoryPriceValue { get; set; } // Introductory subscription price excluding currency symbol e.g 1.23
 
     // Price period is used if the subscription has its introductory price set to a period of time rather than a billing cycle, otherwise price cycles is used
     public string introductoryPricePeriod { get; set; } // Introductory price period in ISO-8601 format e.g P1D, P2D, P1W, P2W, P1M, P2M.. ETC
@@ -271,7 +271,10 @@ public class IABManager : MonoBehaviour {
             }
         }
         
-        Debug.LogError("ProductIdToSKUForActiveStore could not find active store id for " + productId + " on " + activeStore + " falling back to productId (this may cause issues)");
+        #if !UNITY_EDITOR
+            Debug.LogError("ProductIdToSKUForActiveStore could not find active store id for " + productId + " on " + activeStore + " falling back to productId (this may cause issues)");
+        #endif
+        
         return productId;
     }
 
@@ -508,8 +511,9 @@ public class IABManager : MonoBehaviour {
         OnIABPurchaseFailed?.Invoke(error);
     }
 
-    public void OnPurchaseVerificationCompleted(IABItem item, int quantity, string originalTransactionId, string payload) {
-        FirebaseAnalyticsManager.LogEvent(PickleEventCategory.PickleScripts.IAP_PURCHASE_COMPLETE, item.productId);
+    public void OnPurchaseVerificationCompleted(IABItem item, int quantity, string originalTransactionId, string payload, bool testPurchase = false) {
+        if(!testPurchase)
+            FirebaseAnalyticsManager.LogPurchase(item.productId, item.priceValue, item.currencyCode, quantity);
 
         OnIABPurchaseComplete?.Invoke(item);
         OnIABPurchaseCompleteWithQuantity?.Invoke(item, quantity);

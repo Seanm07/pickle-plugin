@@ -333,6 +333,14 @@ public class PickleCore : MonoBehaviour {
                 return false;
             #endif
         }
+        
+        public static bool IsGooglePlayGamesPC() {
+            #if UNITY_ANDROID && !UNITY_EDITOR
+                return CallStatic<bool>(systemInfo, "IsGooglePlayGamesPC", context);
+            #else
+                return false;
+            #endif
+        }
     #endregion
 
     #region Toasts

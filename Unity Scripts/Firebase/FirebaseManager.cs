@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Firebase;
 using Firebase.Installations;
+using UnityEngine.Purchasing;
 
 public class FirebaseManager : MonoBehaviour
 {
@@ -32,6 +33,8 @@ public class FirebaseManager : MonoBehaviour
     // References to the firebase scripts which we instantiate at runtime
     public FirebaseAnalyticsManager analyticsManager { get; private set; }
     public FirebaseMessagingManager messagingManager { get; private set; }
+	//public FirebaseDatabaseManager databaseManager { get; private set; }
+	//public FirebaseRemoteConfigManager remoteConfigManager { get; private set; }
 
     // Callback to when firebase is ready
     public static event Action OnFirebaseInitialised;
@@ -72,6 +75,8 @@ public class FirebaseManager : MonoBehaviour
         // Instantiate the firebase management scripts
         analyticsManager = (FirebaseAnalyticsManager)AddComponentIfNotAlreadyAdded(cachedObj, typeof(FirebaseAnalyticsManager));
         messagingManager = (FirebaseMessagingManager)AddComponentIfNotAlreadyAdded(cachedObj, typeof(FirebaseMessagingManager));
+		//databaseManager = (FirebaseDatabaseManager)AddComponentIfNotAlreadyAdded(cachedObj, typeof(FirebaseDatabaseManager));
+        //remoteConfigManager = (FirebaseRemoteConfigManager)AddComponentIfNotAlreadyAdded(cachedObj, typeof(FirebaseRemoteConfigManager));
         
         OnFirebaseInitialised += FirebaseInitialised;
     }
@@ -97,16 +102,45 @@ public class FirebaseManager : MonoBehaviour
             FirebaseApp.LogLevel = LogLevel.Error;
         }
 
+        bool isAmazonPlatform = CrossPlatformManager.GetActiveStore() == AppStore.AmazonAppStore;
+        
+        // Google Play Services aren't available on Amazon devices so run a more limited initialisation routine
+        if (isAmazonPlatform) {
+            LimitedFirebaseInit();
+        } else {
+            FullFirebaseInit();
+        }
+    }
+
+    private void LimitedFirebaseInit() {
+        try {
+            app = FirebaseApp.DefaultInstance;
+                        
+            // Trigger the callback for firebase init being done before doing anything with firebase (just in case errors prevent us continuing)
+            CallbackInitDone();
+                        
+            // Set an initialised bool to true before invoking the initialised callback (just a simple variable to cheaply check if it's initialised)
+            isInitialised = true;
+            
+            // Forces OnFirebaseInitialised to be called on the main thread to prevent potential crashes (such as if the callback triggers something with PlayerPrefs)
+            UnityMainThreadDispatcher.instance.Enqueue(() => OnFirebaseInitialised?.Invoke());
+        } catch (Exception e) {
+            Debug.LogError("Failed to initialise firebase - " + e.Message);
+            CallbackInitDone();
+        }
+    }
+
+    private void FullFirebaseInit() {
         try {
             FirebaseApp.CheckAndFixDependenciesAsync().ContinueWith(task => {
                 DependencyStatus status = task.Result;
 
                 switch (status) {
                     case DependencyStatus.Available:
+                        app = FirebaseApp.DefaultInstance;
+                        
                         // Trigger the callback for firebase init being done before doing anything with firebase (just in case errors prevent us continuing)
                         CallbackInitDone();
-
-                        app = FirebaseApp.DefaultInstance;
                         
                         // Set an initialised bool to true before invoking the initialised callback (just a simple variable to cheaply check if it's initialised)
                         isInitialised = true;
@@ -120,6 +154,11 @@ public class FirebaseManager : MonoBehaviour
                             if (firebaseInstance != null) {
                                 // Get the instance id of the app (used for testing some firebase features or if the user wants to do a data deletion request)
                                 firebaseInstance.GetIdAsync().ContinueWith(instanceTask => {
+                                    if (instanceTask.IsFaulted || instanceTask.IsCanceled) {
+                                        Debug.LogError("Failed to get Firebase instance id");
+                                        return;
+                                    }
+                                    
                                     instanceId = instanceTask.Result;
                                     Debug.Log("Firebase initialised successfully! Instance id: " + instanceId);
                                 });
@@ -177,6 +216,10 @@ public class FirebaseManager : MonoBehaviour
             hasInitCallbackBeenRan = true;
             UnityMainThreadDispatcher.instance.Enqueue(() => OnFirebaseInitialisationDone?.Invoke());
         }
+    }
+
+    public static bool HasInitBeenRan() {
+        return instance != null && instance.hasInitCallbackBeenRan;
     }
     
     public string GetPathFriendlyIdentifier() {

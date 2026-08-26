@@ -116,19 +116,19 @@ public class TenjinManager : MonoBehaviour {
                     // "json", "signature" https://docs.unity3d.com/Packages/com.unity.purchasing@4.13/manual/GoogleReceipt.html
                     Dictionary<string, object> googlePayload = Json.Deserialize(payload) as Dictionary<string, object>;
 
-                    tenjinInstance.Transaction(item.productId, item.currencyCode, quantity, double.Parse(item.priceValue), originalTransactionId, (string)googlePayload?["json"], (string)googlePayload?["signature"]);
+                    tenjinInstance.Transaction(item.productId, item.currencyCode, quantity, item.priceValue, originalTransactionId, (string)googlePayload?["json"], (string)googlePayload?["signature"]);
                     break;
                 
                 case AppStoreType.amazon: 
                     // "receiptId", "userId", "isSandbox", "receiptJson"
                     Dictionary<string, object> amazonPayload = Json.Deserialize(payload) as Dictionary<string, object>;
                     
-                    tenjinInstance.TransactionAmazon(item.productId, item.currencyCode, quantity, double.Parse(item.priceValue), (string)amazonPayload?["receiptId"], (string)amazonPayload?["userId"]);
+                    tenjinInstance.TransactionAmazon(item.productId, item.currencyCode, quantity, item.priceValue, (string)amazonPayload?["receiptId"], (string)amazonPayload?["userId"]);
                     break;
                 
                 default: 
                     // The payload on iOS is the base64 encoded ASN.1 receipt
-                    tenjinInstance.Transaction(item.productId, item.currencyCode, quantity, double.Parse(item.priceValue), originalTransactionId, payload, null);
+                    tenjinInstance.Transaction(item.productId, item.currencyCode, quantity, item.priceValue, originalTransactionId, payload, null);
                     break;
             }
         }

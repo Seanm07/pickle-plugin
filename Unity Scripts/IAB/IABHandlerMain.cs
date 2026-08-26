@@ -592,7 +592,7 @@ public class IABHandlerMain : MonoBehaviour, IABHandler, IDetailedStoreListener 
 
             // If itemLocalData is null then this is either a purchase in a later version of the game than the current app version or the developer forgot to add it
             if (localItem != null) {
-                localItem.priceValue = product.metadata.localizedPrice.ToString(); // e.g "12.99"
+                localItem.priceValue = (double)product.metadata.localizedPrice; // e.g 12.99
                 localItem.formattedPrice = product.metadata.localizedPriceString; // e.g "$12.99"
                 localItem.description = product.metadata.localizedDescription;
                 localItem.title = product.metadata.localizedTitle;
@@ -743,7 +743,7 @@ public class IABHandlerMain : MonoBehaviour, IABHandler, IDetailedStoreListener 
                     if (!float.TryParse(localItem.introductoryFormattedPrice, NumberStyles.Currency, IAB.GetCultureForISOCurrency(localItem.currencyCode), out float introPriceVal))
                         float.TryParse(localItem.introductoryFormattedPrice, NumberStyles.Currency, CultureInfo.CurrentCulture, out introPriceVal);
 
-                    localItem.introductoryPriceValue = introPriceVal.ToString();
+                    localItem.introductoryPriceValue = introPriceVal;
                 }
 
                 // If a consumable item is still in the inventory when loaded then purchase verification must have failed when trying to consume the item
@@ -1061,7 +1061,7 @@ public class IABHandlerMain : MonoBehaviour, IABHandler, IDetailedStoreListener 
             }
         } else {
             // If we're on a store which doesn't support receipts or validation hasn't been setup, just fallback to skipping purchase verification
-            OnPurchaseVerificationCompleted(product, "", "");
+            OnPurchaseVerificationCompleted(product, product.transactionID, product.receipt);
         }
     }
 
@@ -1453,10 +1453,10 @@ public class IABHandlerMain : MonoBehaviour, IABHandler, IDetailedStoreListener 
 
                                         Debug.Log("originalTransactionId: " + originalTransactionId);
 
-                                        OnPurchaseVerificationCompleted(product, originalTransactionId, decodedReceipt?.Payload);
+                                        OnPurchaseVerificationCompleted(product, originalTransactionId, decodedReceipt?.Payload, verifyWithSandbox);
                                     } else {
                                         Debug.Log("latestReceiptInfo was null");
-                                        OnPurchaseVerificationCompleted(product, decodedReceipt?.TransactionID, decodedReceipt?.Payload);
+                                        OnPurchaseVerificationCompleted(product, decodedReceipt?.TransactionID, decodedReceipt?.Payload, verifyWithSandbox);
                                     }
 
                                     break;
@@ -1509,24 +1509,48 @@ public class IABHandlerMain : MonoBehaviour, IABHandler, IDetailedStoreListener 
         }
     }
 
-    private void OnPurchaseVerificationCompleted(Product product, string originalTransactionId = "", string payload = "") {
+    private void OnPurchaseVerificationCompleted(Product product, string originalTransactionId = "", string payload = "", bool isTestPurchase = false) {
         int quantity = 1;
+        bool testPurchase = isTestPurchase;
 
         if (!string.IsNullOrEmpty(payload)) {
             JSONNode payloadData = JSON.Parse(payload);
+            
+            switch (CrossPlatformManager.GetActiveStore()) {
+                case AppStore.GooglePlay:
+                    // "json", "signature" https://docs.unity3d.com/Packages/com.unity.purchasing@4.13/manual/GoogleReceipt.html
+                    if (payloadData != null && payloadData.HasKey("json")) {
+                        JSONNode payloadJSONData = JSON.Parse(payloadData["json"].Value);
 
-            if (payloadData != null && payloadData.HasKey("json")) {
-                JSONNode payloadJSONData = JSON.Parse(payloadData["json"].Value);
+                        if (payloadJSONData != null) {
+                            // https://developers.google.com/android-publisher/api-ref/rest/v3/purchases.products
+                            if (payloadJSONData.HasKey("quantity"))
+                                quantity = payloadJSONData["quantity"].AsInt;
 
-                if (payloadJSONData != null && payloadJSONData.HasKey("quantity"))
-                    quantity = payloadJSONData["quantity"].AsInt;
+                            if (payloadJSONData.HasKey("purchaseType"))
+                                if (payloadJSONData["purchaseType"].AsInt == 0)
+                                    testPurchase = true;
+                        }
+                    }
+                break;
+
+                case AppStore.AmazonAppStore:
+                    // "receiptId", "userId", "isSandbox", "receiptJson" https://discussions.unity.com/t/solved-amazon-purchase-receipt-data/639903/2
+                    if (payloadData != null) {
+                        if(payloadData.HasKey("isSandbox"))
+                            if (payloadData["isSandbox"].AsBool)
+                                testPurchase = true;
+                    }
+                break;
+                
+                // iOS it's passed as the isTestPurchase parameter
             }
         }
-        
+
         if (quantity <= 0 || quantity >= int.MaxValue)
             quantity = 1;
         
-        IAB.OnPurchaseVerificationCompleted(IAB.GetItemBySKU(product.definition.storeSpecificId), quantity, originalTransactionId, payload);
+        IAB.OnPurchaseVerificationCompleted(IAB.GetItemBySKU(product.definition.storeSpecificId), quantity, originalTransactionId, payload, testPurchase);
 
         // For consumable items this will consume the purchase, everything else it just finalises the transaction
         EndPendingTransaction(product);

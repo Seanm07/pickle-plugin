@@ -10,7 +10,7 @@ using GoogleMobileAds.Mediation.UnityAds.Api;
 using GoogleMobileAds.Ump.Api;
 using UnityEngine.Purchasing;
 
-#if IVMETRICS_EVENTS_ENABLED
+#if IVMETRICS_ANALYTICS
     using IVMetrics;
 #endif
 
@@ -406,16 +406,43 @@ public class AdMob_Manager : MonoBehaviour {
         #endif
         
         #if UNITY_ANDROID
+            try {
+                using AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
+                using AndroidJavaObject currentActivity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
+                using AndroidJavaClass advertisingIdClient = new AndroidJavaClass("com.google.android.gms.ads.identifier.AdvertisingIdClient");
+                using AndroidJavaObject info = advertisingIdClient.CallStatic<AndroidJavaObject>("getAdvertisingIdInfo", currentActivity);
+
+                return info.Call<string>("getId");
+            } catch (System.Exception e) {
+                Debug.LogError("Failed to get advertising ID: " + e);
+            }
+        #elif UNITY_IOS
+            // Get the iOS device id (IDFA) via ASIdentifierManager > advertisingIdentifier
+            return GetIOSAdvertisingIdentifier();
+        
+            // Alternative (IDFV) (same id across apps by developer)
+            // return GetIdentifierForVendor();
+        #endif
+        
+        return "00000000-0000-0000-0000-000000000000";
+    }
+    
+    public string GetDeviceId() {
+        #if UNITY_EDITOR
+            return "EDITOR_DEVICE_ID";
+        #endif
+
+        #if UNITY_ANDROID
             using AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
             using AndroidJavaObject currentActivity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
             using AndroidJavaObject contentResolver = currentActivity.Call<AndroidJavaObject>("getContentResolver");
             using AndroidJavaClass settingsSecure = new AndroidJavaClass("android.provider.Settings$Secure");
             
             if (CrossPlatformManager.GetActiveStore() == AppStore.AmazonAppStore) {
-                // Amazon uses a different string in Settings.Secure to store the advertising id (OAID)
+                // Amazon uses a different string in Settings.Secure to store a advertising id (OAID)
                 return settingsSecure.CallStatic<string>("getString", contentResolver, "advertising_id");
             } else {
-                // Google Play uses the android_id string in Settings.Secure to store the advertising id (GAID)
+                // Google Play uses the android_id string in Settings.Secure to store the device ID
                 return settingsSecure.CallStatic<string>("getString", contentResolver, "android_id");
             }
         #elif UNITY_IOS
@@ -426,7 +453,7 @@ public class AdMob_Manager : MonoBehaviour {
     
     public string GetTestDeviceId() {
         try {
-            string deviceId = GetAdvertisingId();
+            string deviceId = GetDeviceId();
             
             #if UNITY_ANDROID
                 // Android uses MD5 hashing converted to uppercase
@@ -1803,7 +1830,7 @@ public class AdMob_Manager : MonoBehaviour {
         if (debugLogging)
             Debug.Log("AdMob Debug - Rewarded Interstitial ad visible");
 
-#if IVMETRICS_EVENTS_ENABLED
+#if IVMETRICS_ANALYTICS
         IVMetricsManager.LogEvent("admob_rewardint_shown");
 #endif
         
@@ -1872,7 +1899,7 @@ public class AdMob_Manager : MonoBehaviour {
         if (loadAdError != null && lastRewardIntLoadFailCode != loadAdError.GetCode()) {
             lastRewardIntLoadFailCode = loadAdError.GetCode();
             
-#if IVMETRICS_EVENTS_ENABLED
+#if IVMETRICS_ANALYTICS
             IVMetrics.IVMetricsManager.LogEvent("admob_rewardint_load_failed", GetErrorCodeString(lastRewardIntLoadFailCode));
 #endif
             FirebaseAnalyticsManager.LogEvent(PickleEventCategory.PickleScripts.ADMOB_ERROR, "rewardint_load_failed_" + lastRewardIntLoadFailCode);
@@ -1914,7 +1941,7 @@ public class AdMob_Manager : MonoBehaviour {
             hasLoadedAnyRewardedInt = true;
         }
         
-#if IVMETRICS_EVENTS_ENABLED
+#if IVMETRICS_ANALYTICS
         IVMetrics.IVMetricsManager.LogEvent("admob_rewardint_loaded");
 #endif
 
@@ -1969,7 +1996,7 @@ public class AdMob_Manager : MonoBehaviour {
 
         lastRewardLoadFailCode = -1;
         
-#if IVMETRICS_EVENTS_ENABLED
+#if IVMETRICS_ANALYTICS
         IVMetrics.IVMetricsManager.LogEvent("admob_reward_loaded");
 #endif
 
@@ -1991,7 +2018,7 @@ public class AdMob_Manager : MonoBehaviour {
         if (debugLogging)
             Debug.Log("AdMob Debug - Reward ad visible");
 
-#if IVMETRICS_EVENTS_ENABLED
+#if IVMETRICS_ANALYTICS
         IVMetrics.IVMetricsManager.LogEvent("admob_reward_shown");
 #endif
         
@@ -2043,7 +2070,7 @@ public class AdMob_Manager : MonoBehaviour {
         if (loadAdError != null && lastRewardLoadFailCode != loadAdError.GetCode()) {
             lastRewardLoadFailCode = loadAdError.GetCode();
             
-#if IVMETRICS_EVENTS_ENABLED
+#if IVMETRICS_ANALYTICS
             IVMetrics.IVMetricsManager.LogEvent("admob_reward_load_failed", GetErrorCodeString(lastRewardLoadFailCode));
 #endif
 
@@ -2090,7 +2117,7 @@ public class AdMob_Manager : MonoBehaviour {
 
         lastBannerLoadFailCode = -1;
         
-#if IVMETRICS_EVENTS_ENABLED
+#if IVMETRICS_ANALYTICS
         IVMetrics.IVMetricsManager.LogEvent("admob_banner_loaded");
 #endif
 
@@ -2115,7 +2142,7 @@ public class AdMob_Manager : MonoBehaviour {
         if (debugLogging)
             Debug.Log("AdMob Debug - Banner ad visible " + bannerRefId);
 
-#if IVMETRICS_EVENTS_ENABLED
+#if IVMETRICS_ANALYTICS
         IVMetrics.IVMetricsManager.LogEvent("admob_banner_shown");
 #endif
         
@@ -2150,7 +2177,7 @@ public class AdMob_Manager : MonoBehaviour {
         if (loadAdError != null && lastBannerLoadFailCode != loadAdError.GetCode()) {
             lastBannerLoadFailCode = loadAdError.GetCode();
             
-#if IVMETRICS_EVENTS_ENABLED
+#if IVMETRICS_ANALYTICS
             IVMetrics.IVMetricsManager.LogEvent("admob_banner_load_failed", GetErrorCodeString(lastBannerLoadFailCode));
 #endif
 
@@ -2202,7 +2229,7 @@ public class AdMob_Manager : MonoBehaviour {
 
         lastIntLoadFailCode = -1;
         
-#if IVMETRICS_EVENTS_ENABLED
+#if IVMETRICS_ANALYTICS
         IVMetrics.IVMetricsManager.LogEvent("admob_interstitial_loaded");
 #endif
 
@@ -2224,7 +2251,7 @@ public class AdMob_Manager : MonoBehaviour {
         if (debugLogging)
             Debug.Log("AdMob Debug - Interstitial ad visible");
 
-#if IVMETRICS_EVENTS_ENABLED
+#if IVMETRICS_ANALYTICS
         IVMetrics.IVMetricsManager.LogEvent("admob_int_shown");
 #endif
         
@@ -2247,7 +2274,7 @@ public class AdMob_Manager : MonoBehaviour {
         if (loadAdError != null && lastIntLoadFailCode != loadAdError.GetCode()) {
             lastIntLoadFailCode = loadAdError.GetCode();
             
-#if IVMETRICS_EVENTS_ENABLED
+#if IVMETRICS_ANALYTICS
             IVMetrics.IVMetricsManager.LogEvent("admob_int_load_failed", GetErrorCodeString(lastIntLoadFailCode));
 #endif
 
@@ -2281,11 +2308,11 @@ public class AdMob_Manager : MonoBehaviour {
         #if tenjin_admob_enabled
             string json = JsonUtility.ToJson(new AdMobImpressionDataToJSON {
                 ad_unit_id = adUnitId,
-                currency_code = adValue.CurrencyCode,
-                response_id = responseInfo.GetResponseId(),
+                currency_code = adValue?.CurrencyCode,
+                response_id = responseInfo?.GetResponseId(),
                 value_micros = adjustedValueMicros,
-                mediation_adapter_class_name = responseInfo.GetLoadedAdapterResponseInfo().AdapterClassName,
-                precision_type = adValue.Precision.ToString()
+                mediation_adapter_class_name = responseInfo?.GetLoadedAdapterResponseInfo()?.AdapterClassName,
+                precision_type = adValue?.Precision.ToString()
             });
 
             if(TenjinManager.instance != null)

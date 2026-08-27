@@ -13,7 +13,7 @@ A collection of scripts used alongside the Game Pickle plugin in Unity mobile ga
   - [System Info](#system-info)
   - [Toasts](#toasts)
   - [Notifications](#notifications)
-- [Firebase Analytics - PickleEventCategory](#firebase-analytics-pickeleventcategory)
+- [Firebase Analytics - PickleEventCategory](#firebase-analytics---pickeleventcategory)
 
 ## Installation
 

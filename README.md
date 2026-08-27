@@ -13,7 +13,7 @@ A collection of scripts used alongside the Game Pickle plugin in Unity mobile ga
   - [System Info](#system-info)
   - [Toasts](#toasts)
   - [Notifications](#notifications)
-- [Firebase Analytics — PickleEventCategory](#firebase-analytics--pickeleventcategory)
+- [Firebase Analytics - PickleEventCategory](#firebase-analytics-pickeleventcategory)
 
 ## Installation
 
@@ -329,7 +329,7 @@ An example notification script from Helicopter Rescue - https://pastebin.com/PH3
 
 It's a good idea to create a group for each **type** of notification, such as Promotions, Content Unlocked, or Daily Rewards. Players can manually block notifications from each group.
 
-## Firebase Analytics — PickleEventCategory
+## Firebase Analytics - PickleEventCategory
 
 The `PickleEventCategory` class contains a set of predefined event categories used for logging various events within an application.
 We had to switch to predefined event categories as the firebase analytics backend was getting too messy and most the time developers were logging incorrectly which was causing game analytics to be useless.

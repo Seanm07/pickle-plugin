@@ -341,6 +341,14 @@ public class PickleCore : MonoBehaviour {
                 return false;
             #endif
         }
+
+        public static bool IsAmazonDevice() {
+            #if UNITY_ANDROID && !UNITY_EDITOR
+                return CallStatic<bool>(systemInfo, "IsAmazonDevice", context);
+            #else
+                return false;
+            #endif
+        }
     #endregion
 
     #region Toasts

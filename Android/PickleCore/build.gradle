@@ -1,12 +1,12 @@
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 33
+    compileSdkVersion 37
     namespace "com.pickle.picklecore"
 
     defaultConfig {
-        minSdkVersion 22
-        targetSdkVersion 33
+        minSdkVersion 23
+        targetSdkVersion 37
         versionCode 1
         versionName "1.0"
 
@@ -36,5 +36,5 @@ allprojects {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'androidx.core:core:1.16.0'
+    implementation 'androidx.core:core:1.19.0'
 }

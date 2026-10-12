@@ -26,10 +26,14 @@ A collection of scripts used alongside the Game Pickle plugin in Unity mobile ga
 ### Add Scripts to a Scene
 
 1. Create an empty GameObject in your initial build scene, or use an existing GameObject that should never be destroyed (`DontDestroyOnLoad`).
-2. Attach IABManager.cs, FirebaseManager.cs, AdMob_Manager.cs, IAS_Manager.cs, CrossPlatformManager.cs, PickleCore.cs, UnityMainThreadDispatcher.cs to the GameObject
+2. Attach IABManager.cs, FirebaseManager.cs, AdMob_Manager.cs, IAS_Manager.cs, CrossPlatformManager.cs, PersonalisationManager.cs, PickleCore.cs, UnityMainThreadDispatcher.cs to the GameObject
 3. (Optional) Attach ClickLockManager.cs to the GameObject
 4. (Optional) Attach TenjinManager.cs to the GameObject
 5. Configure all Inspector values as required.
+
+### Amazon Appstore
+
+The Amazon Appstore is supported through a custom Unity IAP store (`Unity Scripts/IAB/Amazon Store/`) which wraps the Amazon Appstore SDK directly. It is selected automatically at runtime when `PickleCore.IsAmazonDevice()` returns true (the old `targetAndroidStore` Inspector option has been removed). Give each `IABItem` an entry in `storeSKUs` with `AppStoreProvider.Amazon` if its Amazon SKU differs from the product id.
 
 ## Pickle Core Functions
 
@@ -266,6 +270,20 @@ Returns true if the user device is an Android TV or Android Auto platform.
 > [!CAUTION]
 > We currently do not support this functionality on iOS, it will always return false
 
+### `PickleCore.IsGooglePlayGamesPC()`
+
+Returns true if the app is running on Google Play Games for PC.
+
+> [!CAUTION]
+> We currently do not support this functionality on iOS, it will always return false
+
+### `PickleCore.IsAmazonDevice()`
+
+Returns true if the device is an Amazon device (manufacturer is Amazon, or the device has the Fire TV system feature flag). This is used by `CrossPlatformManager.GetActiveStore()` to select the Amazon Appstore, overriding the Google Play default.
+
+> [!CAUTION]
+> We currently do not support this functionality on iOS, it will always return false
+
 ## Toasts
 
 ### `PickleCore.DisplayToastMessage(string message, bool longShowTime)`
@@ -283,6 +301,23 @@ Displays a small system-style popover message bottom middle of the screen.
 ### `PickleCore.CancelToastMessage()`
 
 Force hide any active toast messages.
+
+### `PickleCore.ShowTextOverlay(string message, int fontSize, float backgroundOpacity)`
+
+Shows white text on screen with a black box background, e.g. a "connect a controller" prompt for games which require one.
+
+| Parameter | Type | Description |
+|------------|------|-------------|
+| `message` | `string` | Text to display |
+| `fontSize` | `int` | Font size of the text |
+| `backgroundOpacity` | `float` | Opacity of the black background box between **0.0f** and **1.0f** |
+
+> [!NOTE]
+> Only supported on Android, other platforms just log the message to the console
+
+### `PickleCore.HideTextOverlay()`
+
+Hides the text overlay shown by `ShowTextOverlay`.
 
 ## Notifications
 
@@ -348,35 +383,40 @@ We had to switch to predefined event categories as the firebase analytics backen
 - **Code Reference**: `PickleEventCategory.PickleScripts.ADMOB_TTL`
 - **Raw Category Name**: `admob_ttl`
 
+#### ADMOB_ERROR
+- **Description**: AdMob related errors.
+- **Code Reference**: `PickleEventCategory.PickleScripts.ADMOB_ERROR`
+- **Raw Category Name**: `admob_error`
+
 #### IAS_CLICK
 - **Description**: Tracks ad clicks on our internal ad system.
 - **Code Reference**: `PickleEventCategory.PickleScripts.IAS_CLICK`
 - **Raw Category Name**: `ias_click`
 
-#### IAS_IMPRESSION
-- **Description**: Tracks ad impressions on our internal ad system.
-- **Code Reference**: `PickleEventCategory.PickleScripts.IAS_IMPRESSION`
-- **Raw Category Name**: `ias_impression`
+#### IAP_ERROR
+- **Description**: Errors with the in-app purchasing system.
+- **Code Reference**: `PickleEventCategory.PickleScripts.IAP_ERROR`
+- **Raw Category Name**: `iap_error`
 
 #### IAP_PURCHASE_COMPLETE
 - **Description**: In-app purchases that completed successfully and triggered the success callback.
 - **Code Reference**: `PickleEventCategory.PickleScripts.IAP_PURCHASE_COMPLETE`
 - **Raw Category Name**: `iap_purchase_complete`
 
-#### IAP_PURCHASE_ERROR
+#### IAP_PURCHASE_FAILED
 - **Description**: In-app purchases which failed.
-- **Code Reference**: `PickleEventCategory.PickleScripts.IAP_PURCHASE_ERROR`
-- **Raw Category Name**: `iap_purchase_error`
+- **Code Reference**: `PickleEventCategory.PickleScripts.IAP_PURCHASE_FAILED`
+- **Raw Category Name**: `iap_purchase_failed`
 
-#### IAB_RESTORE_SUCCESS
+#### IAP_RESTORE_COMPLETE
 - **Description**: In-app purchase restore actions that were successful.
-- **Code Reference**: `PickleEventCategory.PickleScripts.IAB_RESTORE_SUCCESS`
-- **Raw Category Name**: `iab_restore_success`
+- **Code Reference**: `PickleEventCategory.PickleScripts.IAP_RESTORE_COMPLETE`
+- **Raw Category Name**: `iap_restore_complete`
 
-#### IAB_RESTORE_FAILED
+#### IAP_RESTORE_FAILED
 - **Description**: In-app purchase restore actions that failed.
-- **Code Reference**: `PickleEventCategory.PickleScripts.IAB_RESTORE_FAILED`
-- **Raw Category Name**: `iab_restore_failed`
+- **Code Reference**: `PickleEventCategory.PickleScripts.IAP_RESTORE_FAILED`
+- **Raw Category Name**: `iap_restore_failed`
 
 #### LOW_MEMORY_WARNING
 - **Description**: Tracks when the device reaches critically low memory.

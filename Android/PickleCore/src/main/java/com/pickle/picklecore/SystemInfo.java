@@ -476,4 +476,15 @@ public class SystemInfo {
 
         return ctx.getPackageManager().hasSystemFeature("com.google.android.play.feature.HPE_EXPERIENCE");
     }
+
+    public static boolean IsAmazonDevice(Context ctx) {
+        // Check if device manufacturer is amazon
+        if("Amazon".equalsIgnoreCase(Build.MANUFACTURER))
+            return true;
+
+        if(ctx == null) return false;
+
+        // Check if device has a system feature flag unique to Amazon Fire TV
+        return ctx.getPackageManager().hasSystemFeature("amazon.hardware.fire_tv");
+    }
 }

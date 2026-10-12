@@ -29,18 +29,17 @@ public class TenjinManager : MonoBehaviour {
     #if tenjin_admob_enabled
         void Start() {
             switch (CrossPlatformManager.GetActiveStore()) {
-                case AppStore.GooglePlay: 
+                case AppStoreProvider.Google: 
                     activeSDKKey = sdkKeys.google;
                     activeStoreType = AppStoreType.googleplay;
                     break;
                 
-                case AppStore.AmazonAppStore:
+                case AppStoreProvider.Amazon:
                     activeSDKKey = sdkKeys.amazon;
                     activeStoreType = AppStoreType.amazon;
                     break;
                 
-                case AppStore.AppleAppStore:
-                case AppStore.MacAppStore:
+                case AppStoreProvider.Apple:
                     activeSDKKey = sdkKeys.apple;
                     activeStoreType = AppStoreType.other;
                     break;

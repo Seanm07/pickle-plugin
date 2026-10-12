@@ -19,6 +19,9 @@ public class AdMob_Manager : MonoBehaviour {
         // Function for getting the advertising identifier of the current device on iOS for testing ads
         [System.Runtime.InteropServices.DllImport("__Internal")]
         private static extern string GetIOSAdvertisingIdentifier();
+    
+        /*[System.Runtime.InteropServices.DllImport("__Internal")]
+        private static extern string GetIdentifierForVendor();*/
     #endif
     
     [Serializable]
@@ -29,7 +32,7 @@ public class AdMob_Manager : MonoBehaviour {
 
         public PlatformAdData GetActive() {
             switch (Application.platform) {
-                case RuntimePlatform.Android: return CrossPlatformManager.GetActiveStore() == AppStore.GooglePlay ? AndroidAdData : ThirdPartyAndroidAdData;
+                case RuntimePlatform.Android: return CrossPlatformManager.GetActiveStore() == AppStoreProvider.Google ? AndroidAdData : ThirdPartyAndroidAdData;
                 case RuntimePlatform.IPhonePlayer: return IosAdData;
 
                 case RuntimePlatform.WindowsEditor:
@@ -409,10 +412,18 @@ public class AdMob_Manager : MonoBehaviour {
             try {
                 using AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
                 using AndroidJavaObject currentActivity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
-                using AndroidJavaClass advertisingIdClient = new AndroidJavaClass("com.google.android.gms.ads.identifier.AdvertisingIdClient");
-                using AndroidJavaObject info = advertisingIdClient.CallStatic<AndroidJavaObject>("getAdvertisingIdInfo", currentActivity);
+                
+                // Amazon does not have access to AdvertisingIdClient from the Google Play Services so the advertising id is stored in Settings Secure
+                if (CrossPlatformManager.GetActiveStore() == AppStoreProvider.Amazon) {
+                    using AndroidJavaObject contentResolver = currentActivity.Call<AndroidJavaObject>("getContentResolver");
+                    using AndroidJavaClass settingsSecure = new AndroidJavaClass("android.provider.Settings$Secure");
+                    return settingsSecure.CallStatic<string>("getString", contentResolver, "advertising_id");
+                } else {
+                    using AndroidJavaClass advertisingIdClient = new AndroidJavaClass("com.google.android.gms.ads.identifier.AdvertisingIdClient");
+                    using AndroidJavaObject info = advertisingIdClient.CallStatic<AndroidJavaObject>("getAdvertisingIdInfo", currentActivity);
 
-                return info.Call<string>("getId");
+                    return info.Call<string>("getId");
+                }
             } catch (System.Exception e) {
                 Debug.LogError("Failed to get advertising ID: " + e);
             }
@@ -438,7 +449,7 @@ public class AdMob_Manager : MonoBehaviour {
             using AndroidJavaObject contentResolver = currentActivity.Call<AndroidJavaObject>("getContentResolver");
             using AndroidJavaClass settingsSecure = new AndroidJavaClass("android.provider.Settings$Secure");
             
-            if (CrossPlatformManager.GetActiveStore() == AppStore.AmazonAppStore) {
+            if (CrossPlatformManager.GetActiveStore() == AppStoreProvider.Amazon) {
                 // Amazon uses a different string in Settings.Secure to store a advertising id (OAID)
                 return settingsSecure.CallStatic<string>("getString", contentResolver, "advertising_id");
             } else {

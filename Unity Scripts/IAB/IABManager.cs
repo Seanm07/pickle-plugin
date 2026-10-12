@@ -14,7 +14,7 @@ using UnityEngine.Purchasing.Security;
 
 [Serializable]
 public class IABItemStoreInfo {
-    public AppStore store;
+    public AppStoreProvider store;
     public string sku;
 }
 
@@ -46,6 +46,8 @@ public class IABItem {
     public bool isProcessingValidation { get; set; }
 
     public IPurchaseReceipt lastPurchaseReceipt { get; set; }
+    
+    public Order lastOrder { get; set; }
 
     public bool isProductId(string inProductId) {
         return (inProductId == productId);
@@ -85,8 +87,6 @@ public class IABManager : MonoBehaviour {
     [Header("iOS Only (Only required in apps using subscriptions)")]
     public string iosSharedSecret = "";
 
-    private bool isCachedDataReady = false;
-
     public bool isInitializing { get; set; }
     public bool isInitialized { get; set; }
     public bool itemDataReady { get; set; }
@@ -97,6 +97,8 @@ public class IABManager : MonoBehaviour {
     public static event Action OnIABInventoryReady;
     public static event Action OnIABPricesUpdated;
     public static event Action<IABItem> OnOwnedItemLoaded;
+    public static event Action<IABItem, int> OnOwnedItemLoadedWithQuantity;
+    
     public static event Action OnConsumeAllItemsComplete;
 
     public static event Action<IABItem> OnIABPurchaseComplete;
@@ -106,16 +108,9 @@ public class IABManager : MonoBehaviour {
     
     public static event Action<IABItem> OnIABPurchaseDeferred; // A deferred purchase means the user selected to purchase something but selected to pay later such as at a shop, the play store will give the user more info
     public static event Action<string> OnIABPurchaseFailed;
-    public static event Action<IABItem> OnIABPurchaseRefunded;
-
-    public static event Action<IABItem> OnIOSPromoPurchaseComplete;
     
     public static event Action OnRestoreComplete;
     public static event Action OnRestoreFailed;
-
-    private Dictionary<string, string[]> isoToCultureMappings = new Dictionary<string, string[]>() {
-        {"AED",new []{"ar-AE"}},{"AFN",new []{"ps-AF","prs-AF"}},{"ALL",new []{"sq-AL"}},{"AMD",new []{"hy-AM"}},{"ARS",new []{"es-AR"}},{"AUD",new []{"en-AU"}},{"AZN",new []{"az-Latn-AZ","az-Cyrl-AZ"}},{"BAM",new []{"sr-Latn-BA","bs-Cyrl-BA","bs-Latn-BA","hr-BA","sr-Cyrl-BA"}},{"BDT",new []{"bn-BD"}},{"BGN",new []{"bg-BG"}},{"BHD",new []{"ar-BH"}},{"BND",new []{"ms-BN"}},{"BOB",new []{"quz-BO","es-BO"}},{"BRL",new []{"pt-BR"}},{"BYR",new []{"be-BY"}},{"BZD",new []{"en-BZ"}},{"CAD",new []{"moh-CA","en-CA","fr-CA","iu-Cans-CA","iu-Latn-CA"}},{"CHF",new []{"rm-CH","de-CH","de-LI","fr-CH","it-CH"}},{"CLP",new []{"es-CL","arn-CL"}},{"CNY",new []{"zh-CN","bo-CN","ii-CN","mn-Mong-CN","ug-CN"}},{"COP",new []{"es-CO"}},{"CRC",new []{"es-CR"}},{"CSD",new []{"sr-Latn-CS","sr-Cyrl-CS"}},{"CZK",new []{"cs-CZ"}},{"DKK",new []{"kl-GL","da-DK","fo-FO"}},{"DOP",new []{"es-DO"}},{"DZD",new []{"tzm-Latn-DZ","ar-DZ"}},{"EGP",new []{"ar-EG"}},{"ETB",new []{"am-ET"}},{"EUR",new []{"sv-FI","br-FR","ca-ES","co-FR","de-AT","de-DE","de-LU","dsb-DE","el-GR","en-IE","es-ES","et-EE","et-EE","eu-ES","fi-FI","fr-BE","fr-FR","fr-FR","fr-LU","fr-MC","fy-NL","ga-IE","ga-IE","gl-ES","gsw-FR","hsb-DE","it-IT","lb-LU","mt-MT","nl-BE","nl-NL","oc-FR","pt-PT","se-FI","sk-SK","sl-SI","smn-FI","sr-Cyrl-ME","sr-Latn-ME"}},{"GBP",new []{"gd-GB","cy-GB","en-GB"}},{"GEL",new []{"ka-GE"}},{"GTQ",new []{"qut-GT","es-GT"}},{"HKD",new []{"zh-HK"}},{"HNL",new []{"es-HN"}},{"HRK",new []{"hr-HR"}},{"HUF",new []{"hu-HU"}},{"IDR",new []{"id-ID"}},{"ILS",new []{"he-IL"}},{"INR",new []{"te-IN","as-IN","bn-IN","bn-IN","en-IN","gu-IN","hi-IN","kn-IN","kok-IN","ml-IN","mr-IN","or-IN","pa-IN","sa-IN","ta-IN"}},{"IQD",new []{"ar-IQ"}},{"IRR",new []{"fa-IR"}},{"ISK",new []{"is-IS"}},{"JMD",new []{"en-JM"}},{"JOD",new []{"ar-JO"}},{"JPY",new []{"ja-JP"}},{"KES",new []{"sw-KE"}},{"KGS",new []{"ky-KG"}},{"KHR",new []{"km-KH"}},{"KRW",new []{"ko-KR"}},{"KWD",new []{"ar-KW"}},{"KZT",new []{"kk-KZ"}},{"LAK",new []{"lo-LA"}},{"LBP",new []{"ar-LB"}},{"LKR",new []{"si-LK"}},{"LTL",new []{"lt-LT"}},{"LVL",new []{"lv-LV"}},{"LYD",new []{"ar-LY"}},{"MAD",new []{"ar-MA"}},{"MKD",new []{"mk-MK"}},{"MNT",new []{"mn-MN"}},{"MOP",new []{"zh-MO"}},{"MVR",new []{"dv-MV"}},{"MXN",new []{"es-MX"}},{"MYR",new []{"ms-MY","en-MY"}},{"NIO",new []{"yo-NG","es-NI","ha-Latn-NG","ig-NG","ig-NG"}},{"NOK",new []{"smj-NO","nb-NO","nn-NO","se-NO","sma-NO"}},{"NPR",new []{"ne-NP"}},{"NZD",new []{"mi-NZ","en-NZ"}},{"OMR",new []{"ar-OM"}},{"PAB",new []{"es-PA"}},{"PEN",new []{"quz-PE","es-PE"}},{"PHP",new []{"fil-PH","en-PH"}},{"PKR",new []{"ur-PK"}},{"PLN",new []{"pl-PL"}},{"PYG",new []{"es-PY"}},{"QAR",new []{"ar-QA"}},{"RON",new []{"ro-RO"}},{"RSD",new []{"sr-Latn-RS","sr-Cyrl-RS"}},{"RUB",new []{"tt-RU","ba-RU","ba-RU","ru-RU","sah-RU"}},{"RWF",new []{"rw-RW"}},{"SAR",new []{"ar-SA"}},{"SEK",new []{"sv-SE","se-SE","sma-SE","smj-SE"}},{"SGD",new []{"zh-SG","en-SG"}},{"SYP",new []{"syr-SY","ar-SY"}},{"THB",new []{"th-TH"}},{"TJS",new []{"tg-Cyrl-TJ"}},{"TMT",new []{"tk-TM","tk-TM"}},{"TND",new []{"ar-TN"}},{"TRY",new []{"tr-TR","tr-TR"}},{"TTD",new []{"en-TT"}},{"TWD",new []{"zh-TW"}},{"UAH",new []{"uk-UA"}},{"USD",new []{"quz-EC","en-029","en-US","es-EC","es-PR","es-SV","es-US"}},{"UYU",new []{"es-UY"}},{"UZS",new []{"uz-Cyrl-UZ"}},{"VEF",new []{"es-VE"}},{"VND",new []{"vi-VN"}},{"XOF",new []{"wo-SN"}},{"YER",new []{"ar-YE"}},{"ZAR",new []{"zu-ZA","af-ZA","af-ZA","en-ZA","nso-ZA","tn-ZA","xh-ZA"}},{"ZWL",new []{"en-ZW"}}
-    };
 
     private IABHandler iabHandler;
 
@@ -139,17 +134,17 @@ public class IABManager : MonoBehaviour {
                 newIABItem.storeSKUs = new List<IABItemStoreInfo>();
 
                 IABItemStoreInfo googlePlayStoreInfo = new IABItemStoreInfo();
-                googlePlayStoreInfo.store = AppStore.GooglePlay;
+                googlePlayStoreInfo.store = AppStoreProvider.Google;
                 googlePlayStoreInfo.sku = lineData[0];
                 newIABItem.storeSKUs.Add(googlePlayStoreInfo);
                 
                 IABItemStoreInfo appStoreStoreInfo = new IABItemStoreInfo();
-                appStoreStoreInfo.store = AppStore.AppleAppStore;
+                appStoreStoreInfo.store = AppStoreProvider.Apple;
                 appStoreStoreInfo.sku = lineData[1];
                 newIABItem.storeSKUs.Add(appStoreStoreInfo);
                 
                 IABItemStoreInfo amazonStoreInfo = new IABItemStoreInfo();
-                amazonStoreInfo.store = AppStore.AmazonAppStore;
+                amazonStoreInfo.store = AppStoreProvider.Amazon;
                 amazonStoreInfo.sku = lineData[2];
                 newIABItem.storeSKUs.Add(amazonStoreInfo);
 
@@ -168,7 +163,7 @@ public class IABManager : MonoBehaviour {
 #endif
     
     private void Awake() {
-        instance = instance ?? this;
+        instance ??= this;
 
         iabHandler = GetComponent<IABHandlerMain>() ?? gameObject.AddComponent<IABHandlerMain>();
             
@@ -183,15 +178,15 @@ public class IABManager : MonoBehaviour {
             iabHandler.Init(this);
 
             if (CrossPlatformManager.instance.hasInitialized) {
-                OnStoreInitializeSuccessful();
+                OnStoreInitialized();
             } else {
-                CrossPlatformManager.OnStoreInitializeSuccessful += OnStoreInitializeSuccessful;
+                CrossPlatformManager.OnStoreInitializeFinished += OnStoreInitialized;
             }
         });
     }
 
     // Add a few frames of delay so we're not initializing alongside other scripts
-    private void OnStoreInitializeSuccessful() {
+    private void OnStoreInitialized() {
         StartCoroutine(DoStoreInitialization());
     }
 
@@ -205,33 +200,6 @@ public class IABManager : MonoBehaviour {
         }
     }
 
-    // Removed as this was causing a lot of confusion for developers where some were passing productId and some were passing store SKU
-    /*public IABItem GetItem(string ProductID) {
-        return GetItemByProductId(ProductID);
-    }*/
-
-    // Returns true if subscriptions are supported on the current device
-    // (Trying to initiate a subscription on a unsupported device crashes the app)
-    public bool SubscriptionsSupported() {
-        // On android subscriptions have been supported since android 2.2 so if unity runs on the device then it supports subscription :)
-        switch (CrossPlatformManager.GetActiveStore()) {
-            case AppStore.fake: // Enables the fake editor billing to have subscription support
-            case AppStore.GooglePlay:
-            case AppStore.AmazonAppStore:
-                return true;
-                
-            // iOS 11.2 changed handling of subscriptions adding features like introductory prices, changing subscription plan, free trials etc
-            // OpenIAB previously didn't easily support lower iOS versions but Unity IAP supports all supported versions above the device supported minimum
-            case AppStore.AppleAppStore: 
-            case AppStore.MacAppStore: 
-                return true;
-            
-            // Other app stores may support subscriptions, but we haven't setup support within the app or firebase functions for handling them
-            default:
-                return false;
-        }
-    }
-
     public IABItem GetItemBySKU(string wantedSKU) {
         for (int i = 0; i < itemList.Count; i++) {
             IABItem item = itemList[i];
@@ -242,7 +210,7 @@ public class IABManager : MonoBehaviour {
         }
         
         // If this is the amazon app store if this product ends in _group then it's a subscription parent, remove _group and try search for the IABItem again
-        if (CrossPlatformManager.GetActiveStore() == AppStore.AmazonAppStore && wantedSKU.Contains("_group"))
+        if (CrossPlatformManager.GetActiveStore() == AppStoreProvider.Amazon && wantedSKU.Contains("_group"))
             return GetItemBySKU(wantedSKU.Replace("_group", ""));
 
         return null;
@@ -263,7 +231,7 @@ public class IABManager : MonoBehaviour {
     public string ProductIdToSKU(string productId) {
         List<IABItemStoreInfo> skuInfo = GetItemByProductId(productId).storeSKUs;
 
-        AppStore activeStore = CrossPlatformManager.GetActiveStore();
+        AppStoreProvider activeStore = CrossPlatformManager.GetActiveStore();
         
         foreach (IABItemStoreInfo curSkuInfo in skuInfo) {
             if (curSkuInfo.store == activeStore) {
@@ -285,14 +253,6 @@ public class IABManager : MonoBehaviour {
     public IPurchaseReceipt GetPurchaseReceiptByProductId(string productId) {
         return iabHandler.GetPurchaseReceipt(productId);
     }
-
-    public bool HasRawReceiptBySKU(string sku) {
-        return iabHandler.HasRawReceipt(GetItemBySKU(sku).productId);
-    }
-
-    public bool HasRawReceiptByProductId(string productId) {
-        return iabHandler.HasRawReceipt(productId);
-    }
     
     public string GetRawReceiptBySKU(string sku) {
         return iabHandler.GetRawReceipt(GetItemBySKU(sku).productId);
@@ -300,10 +260,6 @@ public class IABManager : MonoBehaviour {
 
     public string GetRawReceiptByProductId(string productId) {
         return iabHandler.GetRawReceipt(productId);
-    }
-
-    public string GetAppleAppReceipt() {
-        return iabHandler.GetAppleAppReceipt();
     }
     
     private bool hasActivateAnyPurchaseDebug = false;
@@ -326,17 +282,11 @@ public class IABManager : MonoBehaviour {
         }
     }
     
-    public void DebugAllPurchases() {
-        StartCoroutine(DoDebugAllPurchases());
-    }
+    public void DebugAllPurchases() => StartCoroutine(DoDebugAllPurchases());
 
     private IEnumerator DoDebugAllPurchases() {
         for (int i = 0; i < itemList.Count; i++) {
             IABItem item = itemList[i];
-
-            // Skip subscriptions if the store doesn't support them
-            if (item.type == ProductType.Subscription && !SubscriptionsSupported())
-                continue;
             
             // Pre-show the message just incase the purchase handling freezes the app until it shows the prompt
             if (ClickLockManager.Instance != null) {
@@ -361,9 +311,7 @@ public class IABManager : MonoBehaviour {
         }
     }
     
-    public void PurchaseItem(string productId) {
-        PurchaseItem(productId, false);
-    }
+    public void PurchaseItem(string productId) => PurchaseItem(productId, false);
 
     private void PurchaseItem(string productId, bool skipInitializingCheck) {
         // If billing is still pending initialisation or failed initialisation, wait a few more seconds for it to initialise then try make the purchase again
@@ -396,20 +344,9 @@ public class IABManager : MonoBehaviour {
         PurchaseItem(productId, true);
     }
 
-    public void ConsumeAllItems() {
-        iabHandler.ConsumeAllItems();
-    }
+    public void ConsumeAllItems() => iabHandler.ConsumeAllItems();
 
-    // Legacy restore function, to be removed in future
-    [Obsolete("Use RestorePurchases instead")]
-    public void RestoreIOSPurchases() {
-        // Support for additional stores has been added so restoring purchases is no longer iOS specific anymore
-        iabHandler.RestorePurchases();
-    }
-
-    public void RestorePurchases() {
-        iabHandler.RestorePurchases();
-    }
+    public void RestorePurchases() => iabHandler.RestorePurchases();
 
     public void OnFocusChange(bool hasFocus) {
         // If the store has not initialized yet, do nothing
@@ -424,37 +361,10 @@ public class IABManager : MonoBehaviour {
         if (hasFocus && isInitialized && !isPurchaseActive)
             iabHandler.InitializePurchasing(); // Unity IAB disconnects when minimzing the app
     }
-
-    public bool StoreSupportsLocalReceipts() {
-        switch (CrossPlatformManager.GetActiveStore()) {
-            // Standard local validation flow for GooglePlay / Apple
-            case AppStore.GooglePlay:
-            case AppStore.AppleAppStore:
-            case AppStore.MacAppStore:
-            case AppStore.AmazonAppStore:
-                return true;
-        }
-
-        return false;
-    }
     
     // Whether the current store supports a restore purchase button so UI can be adjusted accordingly
     public bool StoreSupportsPurchaseRestore() {
-        bool useRestorePurchase = false;
-        
-        switch (CrossPlatformManager.GetActiveStore()) {
-            case AppStore.AppleAppStore:
-            case AppStore.MacAppStore:
-            case AppStore.WinRT:
-                useRestorePurchase = true;
-                break;
-            
-            default:
-                useRestorePurchase = false;
-                break;
-        }
-
-        return useRestorePurchase;
+        return CrossPlatformManager.GetActiveStore() == AppStoreProvider.Apple;
     }
     
     public void OnPurchaseRestoreComplete() {
@@ -463,20 +373,19 @@ public class IABManager : MonoBehaviour {
         OnRestoreComplete?.Invoke();
     }
 
-    public void OnPurchaseRestoreFailed(InitializationFailureReason failureReason, string errorMessage) {
-        Debug.LogError("Purchase restore failed - " + failureReason + " - " + errorMessage);
+    public void OnPurchaseRestoreFailed(string errorMessage) {
+        Debug.LogError("Purchase restore failed - " + errorMessage);
 
-        FirebaseAnalyticsManager.LogEvent(PickleEventCategory.PickleScripts.IAP_RESTORE_FAILED, failureReason.ToString());
+        FirebaseAnalyticsManager.LogEvent(PickleEventCategory.PickleScripts.IAP_RESTORE_FAILED);
         
         OnPurchaseRestoreFailed();
     }
 
-    public void OnPurchaseRestoreFailed() {
-        OnRestoreFailed?.Invoke();
-    }
+    public void OnPurchaseRestoreFailed() => OnRestoreFailed?.Invoke();
 
-    public void OnOwnedItemLoad(IABItem item) {
+    public void OnOwnedItemLoad(IABItem item, int quantity = 1) {
         OnOwnedItemLoaded?.Invoke(item);
+        OnOwnedItemLoadedWithQuantity?.Invoke(item, quantity);
     }
 
     public void OnInventoryReady() {
@@ -484,32 +393,13 @@ public class IABManager : MonoBehaviour {
         OnIABPricesUpdated?.Invoke();
     }
 
-    public void OnConsumeAllComplete() {
-        OnConsumeAllItemsComplete?.Invoke();
-    }
-
-    public void OnPurchaseRefunded(IABItem item) {
-        OnIABPurchaseRefunded?.Invoke(item);
-    }
-
-    // When making a promo purchase on iOS this callback is triggered before the normal purchase complete one
-    public void OnPromoPurchaseComplete(IABItem item) {
-        OnIOSPromoPurchaseComplete?.Invoke(item);
-    }
-
-    
+    public void OnConsumeAllComplete() => OnConsumeAllItemsComplete?.Invoke();
     
     // An item has been selected for deferred purchase meaning the user has not paid yet
     // This callback should be just used to notify the user that they need to complete the purchase to get the item
-    public void OnPurchaseDeferred(IABItem item) {
-        //Debug.Log("Purchase Deferred  [Item: " + product.definition.storeSpecificId + "]");
+    public void OnPurchaseDeferred(IABItem item) => OnIABPurchaseDeferred?.Invoke(item);
 
-        OnIABPurchaseDeferred?.Invoke(item);
-    }
-
-    public void OnPurchaseFailed(string error) {
-        OnIABPurchaseFailed?.Invoke(error);
-    }
+    public void OnPurchaseFailed(string error) => OnIABPurchaseFailed?.Invoke(error);
 
     public void OnPurchaseVerificationCompleted(IABItem item, int quantity, string originalTransactionId, string payload, bool testPurchase = false) {
         if(!testPurchase)
@@ -528,9 +418,9 @@ public class IABManager : MonoBehaviour {
     public void OnPurchaseVerificationFailed(string sku, string error) {
         IABItem localItem = GetItemBySKU(sku);
         
-        OnIABPurchaseFailed?.Invoke("Purchase validation failed! " + error);
+        OnIABPurchaseFailed?.Invoke(error);
 
-        Debug.LogError("Purchase validation failed! " + error);
+        Debug.LogError(error);
 
         FirebaseAnalyticsManager.LogEvent(PickleEventCategory.PickleScripts.IAP_PURCHASE_FAILED, "Validation Failed");
 
@@ -540,10 +430,7 @@ public class IABManager : MonoBehaviour {
         isPurchaseActive = false;
     }
     
-    // //////////////////////////////
     // STRING CONVERSION FUNCTIONS //
-    // //////////////////////////////
-
     public string TimeSpanToISO8601String(TimeSpan timeSpan) {
         return XmlConvert.ToString(timeSpan);
     }
@@ -681,13 +568,15 @@ public class IABManager : MonoBehaviour {
         return "";
     }
     
+    private Dictionary<string, string[]> isoToCultureMappings = new Dictionary<string, string[]>() {
+        {"AED",new []{"ar-AE"}},{"AFN",new []{"ps-AF","prs-AF"}},{"ALL",new []{"sq-AL"}},{"AMD",new []{"hy-AM"}},{"ARS",new []{"es-AR"}},{"AUD",new []{"en-AU"}},{"AZN",new []{"az-Latn-AZ","az-Cyrl-AZ"}},{"BAM",new []{"sr-Latn-BA","bs-Cyrl-BA","bs-Latn-BA","hr-BA","sr-Cyrl-BA"}},{"BDT",new []{"bn-BD"}},{"BGN",new []{"bg-BG"}},{"BHD",new []{"ar-BH"}},{"BND",new []{"ms-BN"}},{"BOB",new []{"quz-BO","es-BO"}},{"BRL",new []{"pt-BR"}},{"BYR",new []{"be-BY"}},{"BZD",new []{"en-BZ"}},{"CAD",new []{"moh-CA","en-CA","fr-CA","iu-Cans-CA","iu-Latn-CA"}},{"CHF",new []{"rm-CH","de-CH","de-LI","fr-CH","it-CH"}},{"CLP",new []{"es-CL","arn-CL"}},{"CNY",new []{"zh-CN","bo-CN","ii-CN","mn-Mong-CN","ug-CN"}},{"COP",new []{"es-CO"}},{"CRC",new []{"es-CR"}},{"CSD",new []{"sr-Latn-CS","sr-Cyrl-CS"}},{"CZK",new []{"cs-CZ"}},{"DKK",new []{"kl-GL","da-DK","fo-FO"}},{"DOP",new []{"es-DO"}},{"DZD",new []{"tzm-Latn-DZ","ar-DZ"}},{"EGP",new []{"ar-EG"}},{"ETB",new []{"am-ET"}},{"EUR",new []{"sv-FI","br-FR","ca-ES","co-FR","de-AT","de-DE","de-LU","dsb-DE","el-GR","en-IE","es-ES","et-EE","et-EE","eu-ES","fi-FI","fr-BE","fr-FR","fr-FR","fr-LU","fr-MC","fy-NL","ga-IE","ga-IE","gl-ES","gsw-FR","hsb-DE","it-IT","lb-LU","mt-MT","nl-BE","nl-NL","oc-FR","pt-PT","se-FI","sk-SK","sl-SI","smn-FI","sr-Cyrl-ME","sr-Latn-ME"}},{"GBP",new []{"gd-GB","cy-GB","en-GB"}},{"GEL",new []{"ka-GE"}},{"GTQ",new []{"qut-GT","es-GT"}},{"HKD",new []{"zh-HK"}},{"HNL",new []{"es-HN"}},{"HRK",new []{"hr-HR"}},{"HUF",new []{"hu-HU"}},{"IDR",new []{"id-ID"}},{"ILS",new []{"he-IL"}},{"INR",new []{"te-IN","as-IN","bn-IN","bn-IN","en-IN","gu-IN","hi-IN","kn-IN","kok-IN","ml-IN","mr-IN","or-IN","pa-IN","sa-IN","ta-IN"}},{"IQD",new []{"ar-IQ"}},{"IRR",new []{"fa-IR"}},{"ISK",new []{"is-IS"}},{"JMD",new []{"en-JM"}},{"JOD",new []{"ar-JO"}},{"JPY",new []{"ja-JP"}},{"KES",new []{"sw-KE"}},{"KGS",new []{"ky-KG"}},{"KHR",new []{"km-KH"}},{"KRW",new []{"ko-KR"}},{"KWD",new []{"ar-KW"}},{"KZT",new []{"kk-KZ"}},{"LAK",new []{"lo-LA"}},{"LBP",new []{"ar-LB"}},{"LKR",new []{"si-LK"}},{"LTL",new []{"lt-LT"}},{"LVL",new []{"lv-LV"}},{"LYD",new []{"ar-LY"}},{"MAD",new []{"ar-MA"}},{"MKD",new []{"mk-MK"}},{"MNT",new []{"mn-MN"}},{"MOP",new []{"zh-MO"}},{"MVR",new []{"dv-MV"}},{"MXN",new []{"es-MX"}},{"MYR",new []{"ms-MY","en-MY"}},{"NIO",new []{"yo-NG","es-NI","ha-Latn-NG","ig-NG","ig-NG"}},{"NOK",new []{"smj-NO","nb-NO","nn-NO","se-NO","sma-NO"}},{"NPR",new []{"ne-NP"}},{"NZD",new []{"mi-NZ","en-NZ"}},{"OMR",new []{"ar-OM"}},{"PAB",new []{"es-PA"}},{"PEN",new []{"quz-PE","es-PE"}},{"PHP",new []{"fil-PH","en-PH"}},{"PKR",new []{"ur-PK"}},{"PLN",new []{"pl-PL"}},{"PYG",new []{"es-PY"}},{"QAR",new []{"ar-QA"}},{"RON",new []{"ro-RO"}},{"RSD",new []{"sr-Latn-RS","sr-Cyrl-RS"}},{"RUB",new []{"tt-RU","ba-RU","ba-RU","ru-RU","sah-RU"}},{"RWF",new []{"rw-RW"}},{"SAR",new []{"ar-SA"}},{"SEK",new []{"sv-SE","se-SE","sma-SE","smj-SE"}},{"SGD",new []{"zh-SG","en-SG"}},{"SYP",new []{"syr-SY","ar-SY"}},{"THB",new []{"th-TH"}},{"TJS",new []{"tg-Cyrl-TJ"}},{"TMT",new []{"tk-TM","tk-TM"}},{"TND",new []{"ar-TN"}},{"TRY",new []{"tr-TR","tr-TR"}},{"TTD",new []{"en-TT"}},{"TWD",new []{"zh-TW"}},{"UAH",new []{"uk-UA"}},{"USD",new []{"quz-EC","en-029","en-US","es-EC","es-PR","es-SV","es-US"}},{"UYU",new []{"es-UY"}},{"UZS",new []{"uz-Cyrl-UZ"}},{"VEF",new []{"es-VE"}},{"VND",new []{"vi-VN"}},{"XOF",new []{"wo-SN"}},{"YER",new []{"ar-YE"}},{"ZAR",new []{"zu-ZA","af-ZA","af-ZA","en-ZA","nso-ZA","tn-ZA","xh-ZA"}},{"ZWL",new []{"en-ZW"}}
+    };
+    
     // Checks if any of the cultures for this iso currency are installed
     public CultureInfo GetCultureForISOCurrency(string isoCurrency) {
-        if (!string.IsNullOrEmpty(isoCurrency) && isoToCultureMappings.ContainsKey(isoCurrency)) {
-            string[] matchingCultures = isoToCultureMappings[isoCurrency];
-            
+        if (!string.IsNullOrEmpty(isoCurrency) && isoToCultureMappings.TryGetValue(isoCurrency, out string[] mapping)) {
             // Lookup each culture until we find an available culture for this device
-            foreach (string cultureString in matchingCultures) {
+            foreach (string cultureString in mapping) {
                 try {
                     CultureInfo culture = CultureInfo.GetCultureInfo(cultureString);
 

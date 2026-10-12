@@ -13,8 +13,5 @@ public interface IABHandler {
 
     IPurchaseReceipt GetPurchaseReceipt(string productId);
     
-    bool HasRawReceipt(string productId);
     string GetRawReceipt(string productId);
-
-    string GetAppleAppReceipt();
 }

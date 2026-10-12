@@ -372,9 +372,9 @@ public class FirebaseAnalyticsManager : MonoBehaviour {
 
         currency = currency.ToUpperInvariant();
 
-        AppStore activeStore = CrossPlatformManager.GetActiveStore();
+        AppStoreProvider activeStore = CrossPlatformManager.GetActiveStore();
 
-        if (activeStore == AppStore.GooglePlay || activeStore == AppStore.AppleAppStore) {
+        if (activeStore == AppStoreProvider.Google || activeStore == AppStoreProvider.Apple) {
             // Built in event, this will automatically currency convert and display as an actual price unit
             // Amazon not included as the purpose of this event is to be used as a datasource for Google Ad campaigns which can't use filters
             FirebaseAnalytics.LogEvent(FirebaseAnalytics.EventPurchase,

@@ -102,7 +102,7 @@ public class FirebaseManager : MonoBehaviour
             FirebaseApp.LogLevel = LogLevel.Error;
         }
 
-        bool isAmazonPlatform = CrossPlatformManager.GetActiveStore() == AppStore.AmazonAppStore;
+        bool isAmazonPlatform = CrossPlatformManager.GetActiveStore() == AppStoreProvider.Amazon;
         
         // Google Play Services aren't available on Amazon devices so run a more limited initialisation routine
         if (isAmazonPlatform) {
@@ -113,19 +113,40 @@ public class FirebaseManager : MonoBehaviour
     }
 
     private void LimitedFirebaseInit() {
+        TryLimitedFirebaseInit(allowRetryOnModuleFailure: true);
+    }
+
+    // On devices without Google Play Services (Amazon Fire etc.) Cloud Messaging always reports
+    // itself as a missing dependency, and the Firebase Unity SDK throws for the WHOLE FirebaseApp
+    // when that happens - even though other products we actually use here (Realtime Database,
+    // Analytics) don't require Play Services at all. By the time that aggregate exception is
+    // thrown the underlying native app has usually already been created and registered, so a
+    // second access to FirebaseApp.DefaultInstance often just returns the already-cached app
+    // instead of re-running (and re-failing) the same module scan. We only retry once to avoid
+    // looping if the app genuinely never gets created.
+    private void TryLimitedFirebaseInit(bool allowRetryOnModuleFailure) {
         try {
             app = FirebaseApp.DefaultInstance;
-                        
+
             // Trigger the callback for firebase init being done before doing anything with firebase (just in case errors prevent us continuing)
             CallbackInitDone();
-                        
+
             // Set an initialised bool to true before invoking the initialised callback (just a simple variable to cheaply check if it's initialised)
             isInitialised = true;
-            
+
             // Forces OnFirebaseInitialised to be called on the main thread to prevent potential crashes (such as if the callback triggers something with PlayerPrefs)
             UnityMainThreadDispatcher.instance.Enqueue(() => OnFirebaseInitialised?.Invoke());
         } catch (Exception e) {
-            Debug.LogError("Failed to initialise firebase - " + e.Message);
+            Debug.LogError("Failed to initialise firebase - " + e.ToString());
+
+            if (allowRetryOnModuleFailure) {
+                Debug.Log("Retrying Firebase init once - this is expected on devices without Google Play Services (e.g. Amazon) where Messaging can't init but other Firebase products still can.");
+
+                TryLimitedFirebaseInit(allowRetryOnModuleFailure: false);
+                return;
+            }
+
+            app = null;
             CallbackInitDone();
         }
     }

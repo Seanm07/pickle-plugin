@@ -1263,30 +1263,29 @@ public class IAS_Manager : MonoBehaviour {
 	public void StoreInitializeFinished() {
 		CrossPlatformManager.OnStoreInitializeFinished -= StoreInitializeFinished;
 
-		AppStore store = CrossPlatformManager.GetActiveStore();
+		AppStoreProvider store = CrossPlatformManager.GetActiveStore();
 
 		// The editor will either act like the apple app store or google play store depending on ios or android build target
-		if (store == AppStore.fake) {
+		if (store == AppStoreProvider.Unknown) {
 #if UNITY_IOS
-				store = AppStore.AppleAppStore;
+			store = AppStoreProvider.Apple;
 #else
-			store = AppStore.GooglePlay;
+			store = AppStoreProvider.Google;
 #endif
 		}
 
 		switch (store) {
-			case AppStore.AppleAppStore:
-			case AppStore.MacAppStore:
+			case AppStoreProvider.Apple:
 				// Slot 3 iOS Game Shark / slot 9 iOS freeonlinegames.com
 				activeSlotId = bundleId.Contains("com.pickle.") ? 3 : 9;
 				break;
 
-			case AppStore.AmazonAppStore:
+			case AppStoreProvider.Amazon:
 				// 2 = Amazon Standard / 22 = Amazon TV
 				activeSlotId = PickleCore.IsAndroidTV() ? 22 : 2;
 				break;
 
-			case AppStore.GooglePlay:
+			case AppStoreProvider.Google:
 				// (Game Pickle) 1 = Google Play Standard / 6 = Google Play Android TV
 				activeSlotId = PickleCore.IsAndroidTV() ? 6 : 1;
 				break;
@@ -2174,9 +2173,9 @@ public class IAS_Manager : MonoBehaviour {
 
 				// Extract the bundleId of the advert
 #if UNITY_ANDROID
-				AppStore store = CrossPlatformManager.GetActiveStore();
+				AppStoreProvider store = CrossPlatformManager.GetActiveStore();
 
-				if (store == AppStore.GooglePlay) {
+				if (store == AppStoreProvider.Google) {
 					// Regex extracts the id GET request from the URL which is the package name of the game
 					// (replaces everything that does NOT match id=blahblah END or NOT match id=blahblah AMERPERSAND
 					packageName = Regex.Match(curSlot.adurl, "(?<=id=)((?!(&|\\?)).)*").Value;

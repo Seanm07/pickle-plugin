@@ -186,7 +186,7 @@ public class FirebaseMessagingManager : MonoBehaviour {
                     
                     // Assume the notification is only targetting Google Play/iOS unless otherwise specified
                     bool targetAllStores = false;
-                    AppStore targetStore = Application.platform == RuntimePlatform.Android ? AppStore.GooglePlay : AppStore.AppleAppStore;
+                    AppStoreProvider targetStore = Application.platform == RuntimePlatform.Android ? AppStoreProvider.Google : AppStoreProvider.Apple;
 
                     if (e.Message.Data.ContainsKey("store")) {
                         if (e.Message.Data["store"].ToLowerInvariant() == "all") {
@@ -194,7 +194,7 @@ public class FirebaseMessagingManager : MonoBehaviour {
                         }
                     }
 
-                    AppStore activeStore = CrossPlatformManager.GetActiveStore();
+                    AppStoreProvider activeStore = CrossPlatformManager.GetActiveStore();
                     
                     if (targetAllStores || activeStore == targetStore) {
                         Debug.Log("Message was targetting this app store!");

@@ -712,65 +712,74 @@ public class IABHandlerMain : MonoBehaviour, IABHandler {
     #region Validation
 
     private void CheckForPromotionalPurchase(PendingOrder order) {
-        // TODO: This isn't a solution, it's still going to call SendPurchaseVerificationRequest for every item in the cart
-        foreach (CartItem cartItem in order.CartOrdered.Items()) {
-            Product product = cartItem.Product;
-            
-            if (!string.IsNullOrEmpty(order.Info.Receipt)) {
-                // https://docs.unity3d.com/Manual/UnityIAPPurchaseReceipts.html
-                UnifiedReceipt decodedReceipt = JsonUtility.FromJson<UnifiedReceipt>(order.Info.Receipt);
+        IReadOnlyList<CartItem> cartItems = order.CartOrdered.Items();
 
-                if (decodedReceipt == null || string.IsNullOrEmpty(decodedReceipt.Payload)) {
-                    Debug.LogError("Purchase failed! Failed to decode UnifiedReceipt");
-                    return;
-                }
+        if (cartItems.Count == 0 || string.IsNullOrEmpty(order.Info.Receipt))
+            return;
 
-                JSONNode receiptPayload = JSONNode.Parse(decodedReceipt.Payload);
+        // The receipt belongs to the whole order and the server side validation request already includes every item in the cart
+        // so the receipt only needs decoding once and the verification request only needs sending once
+        // https://docs.unity3d.com/Manual/UnityIAPPurchaseReceipts.html
+        UnifiedReceipt decodedReceipt = JsonUtility.FromJson<UnifiedReceipt>(order.Info.Receipt);
 
-                if (receiptPayload == null) {
-                    Debug.LogError("Purchase failed! Failed to parse receipt payload");
-                    return;
-                }
+        if (decodedReceipt == null || string.IsNullOrEmpty(decodedReceipt.Payload)) {
+            Debug.LogError("Purchase failed! Failed to decode UnifiedReceipt");
+            return;
+        }
 
-                switch (CrossPlatformManager.GetActiveStore()) {
-                    case AppStoreProvider.Google:
-                        // https://developers.google.com/android-publisher/api-ref/rest/v3/purchases.products#ProductPurchase
-                        JSONNode gPlayPurchaseData = JSONNode.Parse(receiptPayload["json"].Value);
+        JSONNode receiptPayload = JSONNode.Parse(decodedReceipt.Payload);
 
-                        if (gPlayPurchaseData != null) {
-                            // purchaseState can sometimes just not exist when purchased or it can be one of 3 values: 0 = purchased / 1 = cancelled / 2 = pending
-                            // Google also has an undocumented purchaseState 4 for deferred purchase, this should just be treated the same as state 2 pending
-                            if (gPlayPurchaseData["purchaseState"] == null || int.Parse(gPlayPurchaseData["purchaseState"].Value) == 0) {
-                                string purchaseToken = gPlayPurchaseData["purchaseToken"].Value;
+        if (receiptPayload == null) {
+            Debug.LogError("Purchase failed! Failed to parse receipt payload");
+            return;
+        }
 
-                                if (gPlayPurchaseData["purchaseTime"] != null && double.TryParse(gPlayPurchaseData["purchaseTime"].Value, out double purchaseTime)) {
-                                    DateTime purchaseDateTime = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-                                    purchaseDateTime = purchaseDateTime.AddMilliseconds(purchaseTime);
+        switch (CrossPlatformManager.GetActiveStore()) {
+            case AppStoreProvider.Google:
+                // https://developers.google.com/android-publisher/api-ref/rest/v3/purchases.products#ProductPurchase
+                JSONNode gPlayPurchaseData = JSONNode.Parse(receiptPayload["json"].Value);
 
-                                    // If we get to this point then this seems to be a promo code purchase
-                                    GooglePlayReceipt promoReceipt = new GooglePlayReceipt(product.definition.storeSpecificId, order.Info.TransactionID, Application.identifier, purchaseToken, purchaseDateTime, GooglePurchaseState.Purchased);
+                if (gPlayPurchaseData != null) {
+                    // purchaseState can sometimes just not exist when purchased or it can be one of 3 values: 0 = purchased / 1 = cancelled / 2 = pending
+                    // Google also has an undocumented purchaseState 4 for deferred purchase, this should just be treated the same as state 2 pending
+                    if (gPlayPurchaseData["purchaseState"] == null || int.Parse(gPlayPurchaseData["purchaseState"].Value) == 0) {
+                        string purchaseToken = gPlayPurchaseData["purchaseToken"].Value;
 
-                                    // Try validate something, if it fails then it'll fall back to purchase validation failed
-                                    SendPurchaseVerificationRequest(order, promoReceipt);
+                        if (gPlayPurchaseData["purchaseTime"] != null && double.TryParse(gPlayPurchaseData["purchaseTime"].Value, out double purchaseTime)) {
+                            DateTime purchaseDateTime = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+                            purchaseDateTime = purchaseDateTime.AddMilliseconds(purchaseTime);
 
-                                    return;
-                                } else {
-                                    Debug.LogError("Purchase failed! Failed to parse purchaseTime in promo purchase!");
-                                }
-                            } else {
-                                if (gPlayPurchaseData["purchaseState"] == null) {
-                                    Debug.LogError("Active purchase purchaseState did not exist in the purchase info");
-                                } else {
-                                    Debug.Log("Active purchase purchaseState was " + int.Parse(gPlayPurchaseData["purchaseState"].Value));
+                            // The purchase data lists the product id the promo code was redeemed for, use the cart item which matches it
+                            // if for some reason nothing matches fall back to the first item in the cart (promo codes are redeemed for a single product)
+                            Product promoProduct = cartItems[0].Product;
+
+                            foreach (CartItem cartItem in cartItems) {
+                                if (cartItem.Product.definition.storeSpecificId == gPlayPurchaseData["productId"].Value) {
+                                    promoProduct = cartItem.Product;
+                                    break;
                                 }
                             }
-                        } else {
-                            Debug.LogError("Purchase failed! Invalid purchaseInfoJson");
-                        }
 
-                        break;
+                            // If we get to this point then this seems to be a promo code purchase
+                            GooglePlayReceipt promoReceipt = new GooglePlayReceipt(promoProduct.definition.storeSpecificId, order.Info.TransactionID, Application.identifier, purchaseToken, purchaseDateTime, GooglePurchaseState.Purchased);
+
+                            // Try validate something, if it fails then it'll fall back to purchase validation failed
+                            SendPurchaseVerificationRequest(order, promoReceipt);
+                        } else {
+                            Debug.LogError("Purchase failed! Failed to parse purchaseTime in promo purchase!");
+                        }
+                    } else {
+                        if (gPlayPurchaseData["purchaseState"] == null) {
+                            Debug.LogError("Active purchase purchaseState did not exist in the purchase info");
+                        } else {
+                            Debug.Log("Active purchase purchaseState was " + int.Parse(gPlayPurchaseData["purchaseState"].Value));
+                        }
+                    }
+                } else {
+                    Debug.LogError("Purchase failed! Invalid purchaseInfoJson");
                 }
-            }
+
+                break;
         }
     }
     
